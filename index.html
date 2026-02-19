@@ -524,7 +524,62 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
   </div>
 </div>
 
-<script>
+<script type="module">
+// ══════════════════════════════════════════════════════════════════════════════
+// FIREBASE SETUP
+// ══════════════════════════════════════════════════════════════════════════════
+import { initializeApp }                          from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, remove } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBigMYAmZq4bFBYGiP1wWdBuFIj1LYqdyg",
+  authDomain: "family-pantry-62e45.firebaseapp.com",
+  databaseURL: "https://family-pantry-62e45-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "family-pantry-62e45",
+  storageBucket: "family-pantry-62e45.firebasestorage.app",
+  messagingSenderId: "1007893281082",
+  appId: "1:1007893281082:web:58d47936bddea818547803"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getDatabase(firebaseApp);
+
+// Active real-time listeners — stored so we can detach on family switch
+let _listeners = [];
+
+function dbPath(k){ return `families/${STATE.familyCode}/${k}`; }
+
+// Write a value to Firebase
+async function save(k, data){
+  try{ await set(ref(db, dbPath(k)), data); }catch(e){ console.error('Firebase write error', e); }
+}
+
+// One-time read from Firebase
+async function load(k, fallback){
+  try{
+    const snap = await get(ref(db, dbPath(k)));
+    return snap.exists() ? snap.val() : fallback;
+  }catch(e){ return fallback; }
+}
+
+// Subscribe to a path — fires instantly with current value then on every change
+function subscribe(k, callback){
+  const r = ref(db, dbPath(k));
+  const unsub = onValue(r, snap => callback(snap.exists() ? snap.val() : null));
+  _listeners.push(unsub);
+}
+
+// Detach all listeners (used when switching families)
+function detachListeners(){
+  _listeners.forEach(u => u());
+  _listeners = [];
+}
+
+// Settings are device-local (family code, currency preference)
+const SETTINGS_KEY = 'kitchen-settings-v3';
+function loadSettings(){ try{ return JSON.parse(localStorage.getItem(SETTINGS_KEY)); }catch{ return null; } }
+function saveSettings(data){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(data)); }catch(e){} }
+
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS & CURRENCIES
 // ══════════════════════════════════════════════════════════════════════════════
@@ -559,12 +614,6 @@ const CAT_EMOJI_MAP = {'Produce':'🥦','Dairy & Eggs':'🥛','Pantry':'🫙','B
 const RANK = {out:0,low:1,full:2};
 
 // ══════════════════════════════════════════════════════════════════════════════
-// STORAGE KEYS
-// ══════════════════════════════════════════════════════════════════════════════
-function key(k){ return `kitchen-${STATE.familyCode}-${k}`; }
-const SETTINGS_KEY = 'kitchen-settings-v1'; // global (not family-scoped)
-
-// ══════════════════════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════════════════════
 let STATE = {
@@ -590,24 +639,6 @@ let STATE = {
   rates: {},
   ratesTs: 0,
 };
-
-// ══════════════════════════════════════════════════════════════════════════════
-// STORAGE HELPERS
-// ══════════════════════════════════════════════════════════════════════════════
-async function load(k, fallback){
-  try{ const r=await window.storage.get(key(k),true); return r?JSON.parse(r.value):fallback; }
-  catch{ return fallback; }
-}
-async function save(k,data){
-  try{ await window.storage.set(key(k),JSON.stringify(data),true); }catch(e){}
-}
-async function loadSettings(){
-  try{ const r=await window.storage.get(SETTINGS_KEY,false); return r?JSON.parse(r.value):null; }
-  catch{ return null; }
-}
-async function saveSettings(data){
-  try{ await window.storage.set(SETTINGS_KEY,JSON.stringify(data),false); }catch(e){}
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CURRENCY HELPERS
@@ -710,18 +741,41 @@ function detectLocationCurrency(){
 }
 
 async function loadAllData(){
-  STATE.items      = await load('items', getDefaultItems());
-  STATE.categories = await load('cats',  DEFAULT_CATS);
-  STATE.stores     = await load('stores',[]);
-  STATE.shopLogs   = await load('shops', []);
+  detachListeners();
+
+  // Load settings UI
   document.getElementById('settings-currency').value = STATE.currency;
   document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
-  render();
+
+  // Seed defaults if family is brand new
+  const existingItems = await load('items', null);
+  if(!existingItems){
+    await save('items', getDefaultItems());
+    await save('cats',  DEFAULT_CATS);
+    await save('stores', []);
+    await save('shops',  []);
+  }
+
+  // Subscribe to real-time updates — each fires immediately then on any change
+  subscribe('items', val => {
+    STATE.items = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+    render();
+  });
+  subscribe('cats', val => {
+    STATE.categories = val ? (Array.isArray(val) ? val : Object.values(val)) : DEFAULT_CATS;
+  });
+  subscribe('stores', val => {
+    STATE.stores = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+  });
+  subscribe('shops', val => {
+    STATE.shopLogs = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+    if(STATE.mode === 'history') renderHistoryTab();
+  });
 }
 
 async function finishOnboard(){
   STATE.currency = document.getElementById('onboard-currency').value;
-  await saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
+  saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
   await loadAllData();
   hideOnboarding();
 }
@@ -731,7 +785,7 @@ async function joinFamily(){
   if(!code||code.length<4){ alert('Please enter a valid family code.'); return; }
   STATE.familyCode = code;
   STATE.currency = document.getElementById('onboard-currency').value;
-  await saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
+  saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
   await loadAllData();
   hideOnboarding();
 }
@@ -739,8 +793,10 @@ async function joinFamily(){
 async function switchFamily(){
   const code = document.getElementById('switch-code-input').value.trim().toUpperCase();
   if(!code||code.length<4){ alert('Please enter a valid family code.'); return; }
+  detachListeners();
   STATE.familyCode = code;
-  await saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
+  STATE.items = []; STATE.stores = []; STATE.shopLogs = [];
+  saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
   await loadAllData();
   closeModal('family-overlay');
 }
@@ -761,7 +817,7 @@ function copyFamilyCode(){
 
 async function updateCurrency(val){
   STATE.currency = val;
-  await saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
+  saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
   document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
   render();
 }
@@ -1466,19 +1522,27 @@ function handleOverlayClick(e,id){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// AUTO REFRESH — only update if data actually changed
+// EXPOSE FUNCTIONS TO GLOBAL SCOPE (required for onclick= with type="module")
 // ══════════════════════════════════════════════════════════════════════════════
-setInterval(async()=>{
-  if(!STATE.familyCode) return;
-  try{
-    const freshItems=await load('items',null);
-    const freshShops=await load('shops',null);
-    let changed=false;
-    if(freshItems&&JSON.stringify(freshItems)!==JSON.stringify(STATE.items)){STATE.items=freshItems;changed=true;}
-    if(freshShops&&JSON.stringify(freshShops)!==JSON.stringify(STATE.shopLogs)){STATE.shopLogs=freshShops;changed=true;}
-    if(changed) render();
-  }catch(e){}
-},30000);
+Object.assign(window, {
+  // Onboarding & family
+  finishOnboard, joinFamily, switchFamily, copyFamilyCode, updateCurrency,
+  // Mode & filters
+  setMode, handleMainAdd, toggleFilter, toggleShopFilter,
+  // Item CRUD
+  openAddModal, openEditModal, saveItem, openDetail, updateStatus,
+  openEditFromDetail, deleteItem, addNewCategory, selectStatus,
+  // Store CRUD
+  openAddStore, openStoreDetail, saveStore, selectStore, renderStorePickList,
+  // Shopping & log
+  openLogShop, toggleLogItem, recalcLogTotal, saveShopLog,
+  // History
+  toggleShopCard, confirmDeleteShop,
+  // Modals
+  openModal, closeModal, handleOverlayClick,
+  // Family modal
+  openFamilyModal: () => openModal('family-overlay'),
+});
 
 // ══════════════════════════════════════════════════════════════════════════════
 // START
