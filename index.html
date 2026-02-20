@@ -110,10 +110,16 @@ body.mode-shopping .shop-banner{display:flex;}
 /* ── CATEGORY SECTION ── */
 .category-section{margin-bottom:26px;}
 .category-header{display:flex;align-items:center;margin-bottom:10px;}
-.category-name{font-family:'Fraunces',serif;font-size:1.02rem;font-weight:500;color:var(--text2);letter-spacing:0.3px;display:flex;align-items:center;gap:8px;transition:color 0.3s;}
+.category-name{font-family:'Fraunces',serif;font-size:1.02rem;font-weight:500;color:var(--text2);letter-spacing:0.3px;display:flex;align-items:center;gap:8px;transition:color 0.3s;flex:1;}
 body.mode-shopping .category-name{color:var(--shop-accent);}
 .category-count{font-family:'DM Sans',sans-serif;font-size:0.72rem;background:var(--surface2);border-radius:50px;padding:2px 8px;color:var(--text2);transition:all 0.3s;}
 body.mode-shopping .category-count{background:#c5dece;color:var(--shop-accent);}
+.cat-add-btn{width:26px;height:26px;border-radius:50%;background:var(--surface2);border:1.5px solid var(--border);color:var(--text2);font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity 0.15s,background 0.15s,transform 0.15s;flex-shrink:0;user-select:none;}
+.category-section:hover .cat-add-btn{opacity:1;}
+.cat-add-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.1);}
+body.mode-shopping .cat-add-btn:hover{background:var(--shop-accent);border-color:var(--shop-accent);color:#fff;}
+/* Always visible on touch devices */
+@media(hover:none){.cat-add-btn{opacity:1;}}
 
 /* ── ITEM CARD ── */
 .item-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:opacity 0.2s,transform 0.15s;position:relative;}
@@ -363,6 +369,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
         <input class="form-input" id="new-cat-input" placeholder="Or type new category…" />
         <button class="new-cat-btn" id="btn-add-cat">Add</button>
       </div>
+      <div id="cat-manage-list" style="margin-top:8px;"></div>
     </div>
     <div class="form-group">
       <label class="form-label">Status</label>
@@ -442,6 +449,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="modal-handle"></div>
     <div class="modal-title">Choose Store</div>
     <div class="modal-sub">Estimates are personalised per store.</div>
+    <input class="form-input" id="store-search-input" placeholder="🔍 Search by name or city…" style="margin-bottom:12px;" />
     <div id="store-pick-list"></div>
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-secondary" id="btn-cancel-store-pick">Cancel</button>
@@ -471,6 +479,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     </div>
     <div class="btn-row">
       <button class="btn btn-secondary" id="btn-cancel-store">Cancel</button>
+      <button class="btn btn-danger"    id="btn-delete-store" style="display:none;">🗑 Delete</button>
       <button class="btn btn-green"     id="btn-save-store">Save Store</button>
     </div>
   </div>
@@ -552,6 +561,14 @@ function dbPath(k){ return `families/${STATE.familyCode}/${k}`; }
 // Write a value to Firebase
 async function save(k, data){
   try{ await set(ref(db, dbPath(k)), data); }catch(e){ console.error('Firebase write error', e); }
+}
+
+// Save a single item/store/shop by its id (avoids full-array overwrites)
+async function saveRecord(collection, record){
+  try{ await set(ref(db, dbPath(collection)+'/'+record.id), record); }catch(e){ console.error(e); }
+}
+async function deleteRecord(collection, id){
+  try{ await remove(ref(db, dbPath(collection)+'/'+id)); }catch(e){ console.error(e); }
 }
 
 // One-time read from Firebase
@@ -750,25 +767,30 @@ async function loadAllData(){
   // Seed defaults if family is brand new
   const existingItems = await load('items', null);
   if(!existingItems){
-    await save('items', getDefaultItems());
+    const defaultItems = getDefaultItems();
+    const itemsObj = {};
+    defaultItems.forEach(i => itemsObj[i.id] = i);
+    await save('items', itemsObj);
     await save('cats',  DEFAULT_CATS);
-    await save('stores', []);
-    await save('shops',  []);
+    await save('stores', {});
+    await save('shops',  {});
   }
 
-  // Subscribe to real-time updates — each fires immediately then on any change
+  // Subscribe to real-time updates
+  // Firebase stores arrays as keyed objects — always normalise to array
   subscribe('items', val => {
-    STATE.items = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+    STATE.items = val ? Object.values(val) : [];
     render();
   });
   subscribe('cats', val => {
     STATE.categories = val ? (Array.isArray(val) ? val : Object.values(val)) : DEFAULT_CATS;
   });
   subscribe('stores', val => {
-    STATE.stores = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+    STATE.stores = val ? Object.values(val) : [];
+    if(STATE.mode==='stores') renderStoresTab();
   });
   subscribe('shops', val => {
-    STATE.shopLogs = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+    STATE.shopLogs = val ? Object.values(val) : [];
     if(STATE.mode === 'history') renderHistoryTab();
   });
 }
@@ -994,9 +1016,12 @@ function itemCard(item, showPrice){
   </div>`;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// PANTRY TAB
-// ══════════════════════════════════════════════════════════════════════════════
+function categoryHeader(cat, count){
+  return `<div class="category-header">
+    <div class="category-name">${catEmoji(cat)} ${escHtml(cat)}<span class="category-count">${count}</span></div>
+    <div class="cat-add-btn" onclick="openAddModalForCategory('${escHtml(cat)}')" title="Add item to ${escHtml(cat)}">＋</div>
+  </div>`;
+}
 function renderPantry(){
   renderStats();
   const container=document.getElementById('items-container');
@@ -1008,7 +1033,7 @@ function renderPantry(){
     list=sorted(list,STATE.pf.recent,STATE.pf.alpha);
     if(!list.length) continue;
     html+=`<div class="category-section">
-      <div class="category-header"><div class="category-name">${catEmoji(cat)} ${cat}<span class="category-count">${list.length}</span></div></div>
+      ${categoryHeader(cat, list.length)}
       ${list.map(i=>itemCard(i,false)).join('')}
     </div>`;
   }
@@ -1058,13 +1083,13 @@ function renderShoppingTab(){
     if(STATE.sf.needsOnly){
       if(!needItems.length) continue;
       html+=`<div class="category-section">
-        <div class="category-header"><div class="category-name">${catEmoji(cat)} ${cat}<span class="category-count">${needItems.length}</span></div></div>
+        ${categoryHeader(cat, needItems.length)}
         ${needItems.map(i=>itemCard(i,true)).join('')}
       </div>`;
     } else {
       if(!needItems.length&&!stockItems.length) continue;
       html+=`<div class="category-section">
-        <div class="category-header"><div class="category-name">${catEmoji(cat)} ${cat}<span class="category-count">${catItems.length}</span></div></div>
+        ${categoryHeader(cat, catItems.length)}
         ${needItems.map(i=>itemCard(i,true)).join('')}
         ${needItems.length&&stockItems.length?'<div class="section-divider"><span>Already Stocked</span></div>':''}
         ${stockItems.map(i=>itemCard(i,false)).join('')}
@@ -1197,14 +1222,21 @@ function toggleShopCard(id){
 
 function confirmDeleteShop(id){
   if(!confirm('Delete this shop log?')) return;
-  STATE.shopLogs=STATE.shopLogs.filter(l=>l.id!==id);
-  save('shops',STATE.shopLogs);
-  renderHistoryTab();
+  deleteRecord('shops', id);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ITEM CRUD
 // ══════════════════════════════════════════════════════════════════════════════
+function openAddModalForCategory(cat){
+  openAddModal();
+  // After modal opens, pre-select the category
+  setTimeout(()=>{
+    const sel=document.getElementById('item-category-input');
+    if(sel) sel.value=cat;
+  }, 50);
+}
+
 function openAddModal(){
   STATE.editingItemId=null;
   document.getElementById('modal-title').textContent='Add Item';
@@ -1239,17 +1271,16 @@ function populateCatSelect(selected){
   const el=document.getElementById('item-category-input');
   el.innerHTML=`<option value="">Select a category…</option>`;
   STATE.categories.forEach(c=>el.innerHTML+=`<option value="${escHtml(c)}" ${c===selected?'selected':''}>${escHtml(c)}</option>`);
-}
-
-async function addNewCategory(){
-  const val=document.getElementById('new-cat-input').value.trim();
-  if(!val) return;
-  if(!STATE.categories.includes(val)){
-    STATE.categories.push(val);
-    await save('cats',STATE.categories);
-  }
-  populateCatSelect(val);
-  document.getElementById('new-cat-input').value='';
+  // Render category management list
+  const mgmt=document.getElementById('cat-manage-list');
+  if(!mgmt) return;
+  const custom=STATE.categories.filter(c=>!DEFAULT_CATS.includes(c));
+  if(!custom.length){ mgmt.innerHTML=''; return; }
+  mgmt.innerHTML=`<div style="font-size:0.72rem;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Custom categories</div>`+
+    custom.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface2);border-radius:8px;margin-bottom:4px;">
+      <span style="font-size:0.85rem;">${escHtml(c)}</span>
+      <button onclick="deleteCategory('${escHtml(c)}')" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:0.8rem;padding:2px 6px;">🗑</button>
+    </div>`).join('');
 }
 
 function selectStatus(s){ STATE.selectedStatus=s; updateStatusPicker(); }
@@ -1265,14 +1296,14 @@ async function saveItem(){
   if(!name){document.getElementById('item-name-input').focus();return;}
   if(!cat) cat='Other';
   if(STATE.editingItemId){
-    const idx=STATE.items.findIndex(i=>i.id===STATE.editingItemId);
-    if(idx>-1) STATE.items[idx]={...STATE.items[idx],name,category:cat,status:STATE.selectedStatus,estimatedPrice,updated:Date.now()};
+    const existing=STATE.items.find(i=>i.id===STATE.editingItemId);
+    const updated={...existing,name,category:cat,status:STATE.selectedStatus,estimatedPrice,updated:Date.now()};
+    await saveRecord('items', updated);
   } else {
-    STATE.items.unshift({id:uid(),name,category:cat,status:STATE.selectedStatus,estimatedPrice,updated:Date.now()});
+    const newItem={id:uid(),name,category:cat,status:STATE.selectedStatus,estimatedPrice,updated:Date.now()};
+    await saveRecord('items', newItem);
   }
-  await save('items',STATE.items);
   closeModal('add-overlay');
-  render();
 }
 
 function openDetail(id){
@@ -1286,10 +1317,9 @@ function openDetail(id){
 }
 
 async function updateStatus(status){
-  const idx=STATE.items.findIndex(i=>i.id===STATE.detailItemId);
-  if(idx>-1){STATE.items[idx].status=status;STATE.items[idx].updated=Date.now();await save('items',STATE.items);}
+  const item=STATE.items.find(i=>i.id===STATE.detailItemId);
+  if(item){ await saveRecord('items',{...item,status,updated:Date.now()}); }
   closeModal('detail-overlay');
-  render();
 }
 
 function openEditFromDetail(){
@@ -1299,11 +1329,11 @@ function openEditFromDetail(){
 }
 
 async function deleteItem(){
-  if(!confirm(`Remove "${STATE.items.find(i=>i.id===STATE.detailItemId)?.name}"?`)) return;
-  STATE.items=STATE.items.filter(i=>i.id!==STATE.detailItemId);
-  await save('items',STATE.items);
+  const item=STATE.items.find(i=>i.id===STATE.detailItemId);
+  if(!item) return;
+  if(!confirm(`Remove "${item.name}"?`)) return;
+  await deleteRecord('items', STATE.detailItemId);
   closeModal('detail-overlay');
-  render();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1314,16 +1344,15 @@ function openAddStore(){
   document.getElementById('add-store-title').textContent='Add Store';
   document.getElementById('store-name-input').value='';
   document.getElementById('store-city-input').value='';
-  // Re-populate store currency select
   const sel=document.getElementById('store-currency-input');
   sel.innerHTML=CURRENCIES.map(c=>`<option value="${c.code}">${c.symbol} ${c.code} — ${c.name}</option>`).join('');
   sel.value=STATE.currency;
+  document.getElementById('btn-delete-store').style.display='none';
   openModal('add-store-overlay');
   setTimeout(()=>document.getElementById('store-name-input').focus(),300);
 }
 
 function openStoreDetail(id){
-  // For now open the add modal in edit mode
   STATE.editingStoreId=id;
   const store=STATE.stores.find(s=>s.id===id);
   if(!store) return;
@@ -1333,6 +1362,7 @@ function openStoreDetail(id){
   const sel=document.getElementById('store-currency-input');
   sel.innerHTML=CURRENCIES.map(c=>`<option value="${c.code}">${c.symbol} ${c.code} — ${c.name}</option>`).join('');
   sel.value=store.currency||STATE.currency;
+  document.getElementById('btn-delete-store').style.display='block';
   openModal('add-store-overlay');
 }
 
@@ -1341,32 +1371,49 @@ async function saveStore(){
   const city=document.getElementById('store-city-input').value.trim();
   const currency=document.getElementById('store-currency-input').value;
   if(!name){document.getElementById('store-name-input').focus();return;}
-  if(STATE.editingStoreId){
-    const idx=STATE.stores.findIndex(s=>s.id===STATE.editingStoreId);
-    if(idx>-1) STATE.stores[idx]={...STATE.stores[idx],name,city,currency};
-  } else {
-    STATE.stores.push({id:uid(),name,city,currency});
-  }
-  await save('stores',STATE.stores);
+  const existing=STATE.editingStoreId?STATE.stores.find(s=>s.id===STATE.editingStoreId):null;
+  const store={
+    id: existing?existing.id:uid(),
+    name, city, currency,
+  };
+  await saveRecord('stores', store);
   closeModal('add-store-overlay');
-  render();
 }
 
-// Store picker list (in shopping mode)
-function renderStorePickList(){
+async function deleteStore(){
+  if(!STATE.editingStoreId) return;
+  const store=STATE.stores.find(s=>s.id===STATE.editingStoreId);
+  if(!store) return;
+  if(!confirm(`Remove "${store.name}"? This won't delete your shop history for this store.`)) return;
+  await deleteRecord('stores', STATE.editingStoreId);
+  if(STATE.selectedStoreId===STATE.editingStoreId) STATE.selectedStoreId=null;
+  closeModal('add-store-overlay');
+}
+
+// Store picker list — with search filter
+function renderStorePickList(filter){
+  filter=(filter||'').toLowerCase();
   const container=document.getElementById('store-pick-list');
   if(!STATE.stores.length){
-    container.innerHTML=`<div style="text-align:center;color:var(--text2);padding:24px 0;font-size:0.88rem;">No stores yet. Add one first.</div>`;
+    container.innerHTML=`<div style="text-align:center;color:var(--text2);padding:24px 0;font-size:0.88rem;">No stores yet. Add one below.</div>`;
     return;
   }
-  container.innerHTML=STATE.stores.map(s=>`
+  const filtered=STATE.stores.filter(s=>
+    s.name.toLowerCase().includes(filter)||
+    (s.city||'').toLowerCase().includes(filter)
+  );
+  if(!filtered.length){
+    container.innerHTML=`<div style="text-align:center;color:var(--text2);padding:16px 0;font-size:0.88rem;">No stores match "${filter}"</div>`;
+    return;
+  }
+  container.innerHTML=filtered.map(s=>`
     <div class="action-item ${s.id===STATE.selectedStoreId?'full':''}" onclick="selectStore('${s.id}')" style="margin-bottom:8px;">
       <span style="font-size:1.3rem;">🏪</span>
-      <div>
+      <div style="flex:1;">
         <div>${escHtml(s.name)}</div>
         <div class="ai-sub">${escHtml(s.city||'')}${s.currency&&s.currency!==STATE.currency?' · '+s.currency:''}</div>
       </div>
-      ${s.id===STATE.selectedStoreId?'<span style="margin-left:auto;">✓</span>':''}
+      ${s.id===STATE.selectedStoreId?'<span>✓</span>':''}
     </div>`).join('');
 }
 
@@ -1374,6 +1421,34 @@ function selectStore(id){
   STATE.selectedStoreId=id;
   closeModal('store-pick-overlay');
   render();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CATEGORY MANAGEMENT
+// ══════════════════════════════════════════════════════════════════════════════
+async function addNewCategory(){
+  const val=document.getElementById('new-cat-input').value.trim();
+  if(!val) return;
+  if(!STATE.categories.includes(val)){
+    STATE.categories.push(val);
+    await save('cats', STATE.categories);
+  }
+  populateCatSelect(val);
+  document.getElementById('new-cat-input').value='';
+}
+
+async function deleteCategory(cat){
+  const usedBy=STATE.items.filter(i=>i.category===cat);
+  let msg=`Remove category "${cat}"?`;
+  if(usedBy.length) msg+=`\n\n${usedBy.length} item${usedBy.length!==1?'s':''} use this category and will move to "Other".`;
+  if(!confirm(msg)) return;
+  STATE.categories=STATE.categories.filter(c=>c!==cat);
+  await save('cats', STATE.categories);
+  // Move affected items to Other
+  for(const item of usedBy){
+    await saveRecord('items',{...item,category:'Other',updated:Date.now()});
+  }
+  populateCatSelect(null);
 }
 
 // Override openModal for store-pick to also render the list
@@ -1473,29 +1548,24 @@ async function saveShopLog(){
     actualTotal,
     currency:storeCurrency,
   };
-  STATE.shopLogs.unshift(shopLog);
-  await save('shops',STATE.shopLogs);
+  await saveRecord('shops', shopLog);
 
-  // Update item prices from actual prices logged
-  // + mark bought items as "full" (they were purchased)
+  // Update item prices + mark bought items as full
   for(const li of logItems){
     if(!li.bought) continue;
-    const idx=STATE.items.findIndex(i=>i.id===li.itemId);
-    if(idx===-1) continue;
-    STATE.items[idx].status='full';
-    STATE.items[idx].updated=Date.now();
-    // Update per-store price
+    const item=STATE.items.find(i=>i.id===li.itemId);
+    if(!item) continue;
+    const updated={...item, status:'full', updated:Date.now()};
     if(li.actualPrice&&STATE.selectedStoreId){
-      if(!STATE.items[idx].storePrices) STATE.items[idx].storePrices={};
-      STATE.items[idx].storePrices[STATE.selectedStoreId]=li.actualPrice;
+      if(!updated.storePrices) updated.storePrices={};
+      updated.storePrices[STATE.selectedStoreId]=li.actualPrice;
     }
-    // Update global estimated price (rolling average)
     if(li.actualPrice){
-      const old=STATE.items[idx].estimatedPrice||li.actualPrice;
-      STATE.items[idx].estimatedPrice=Number(((old+li.actualPrice)/2).toFixed(2));
+      const old=updated.estimatedPrice||li.actualPrice;
+      updated.estimatedPrice=Number(((old+li.actualPrice)/2).toFixed(2));
     }
+    await saveRecord('items', updated);
   }
-  await save('items',STATE.items);
 
   closeModal('log-shop-overlay');
   alert(`Shop logged! ${logItems.filter(i=>i.bought).length} items marked as stocked.`);
@@ -1506,8 +1576,10 @@ async function saveShopLog(){
 // MODAL HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
 function openModal(id){
-  // Special case: render store pick list before opening
-  if(id==='store-pick-overlay') renderStorePickList();
+  if(id==='store-pick-overlay'){
+    document.getElementById('store-search-input').value='';
+    renderStorePickList('');
+  }
   document.getElementById(id).classList.add('open');
   document.body.style.overflow='hidden';
 }
@@ -1574,7 +1646,11 @@ function bindEvents(){
   // Add store modal
   document.getElementById('btn-cancel-store').addEventListener('click', () => closeModal('add-store-overlay'));
   document.getElementById('btn-save-store').addEventListener('click', saveStore);
+  document.getElementById('btn-delete-store').addEventListener('click', deleteStore);
   document.getElementById('add-store-overlay').addEventListener('click', e => { if(e.target === document.getElementById('add-store-overlay')) closeModal('add-store-overlay'); });
+
+  // Store search
+  document.getElementById('store-search-input').addEventListener('input', e => renderStorePickList(e.target.value));
 
   // Log shop modal
   document.getElementById('btn-cancel-log').addEventListener('click', () => closeModal('log-shop-overlay'));
@@ -1585,17 +1661,19 @@ function bindEvents(){
   document.getElementById('btn-add-cat').addEventListener('click', addNewCategory);
 
   // Expose functions used in dynamically-rendered innerHTML onclick attributes
-  window.openDetail       = openDetail;
-  window.openStoreDetail  = openStoreDetail;
-  window.selectStore      = selectStore;
-  window.toggleShopCard   = toggleShopCard;
-  window.confirmDeleteShop= confirmDeleteShop;
-  window.toggleLogItem    = toggleLogItem;
-  window.toggleFilter     = toggleFilter;
-  window.toggleShopFilter = toggleShopFilter;
-  window.STATE            = STATE; // needed for history date filter inline handlers
-  window.renderFilterBar  = renderFilterBar;
-  window.renderHistoryTab = renderHistoryTab;
+  window.openDetail             = openDetail;
+  window.openStoreDetail        = openStoreDetail;
+  window.selectStore            = selectStore;
+  window.toggleShopCard         = toggleShopCard;
+  window.confirmDeleteShop      = confirmDeleteShop;
+  window.toggleLogItem          = toggleLogItem;
+  window.toggleFilter           = toggleFilter;
+  window.toggleShopFilter       = toggleShopFilter;
+  window.deleteCategory         = deleteCategory;
+  window.openAddModalForCategory= openAddModalForCategory;
+  window.STATE                  = STATE;
+  window.renderFilterBar        = renderFilterBar;
+  window.renderHistoryTab       = renderHistoryTab;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
