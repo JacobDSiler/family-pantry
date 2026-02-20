@@ -1295,18 +1295,43 @@ async function saveItem(){
   const estimatedPrice=priceRaw?Number(parseFloat(priceRaw).toFixed(2)):null;
   if(!name){document.getElementById('item-name-input').focus();return;}
   if(!cat) cat='Other';
-  if(STATE.editingItemId){
-    const existing=STATE.items.find(i=>i.id===STATE.editingItemId);
-    const updated={...existing,name,category:cat,status:STATE.selectedStatus,estimatedPrice,updated:Date.now()};
-    await saveRecord('items', updated);
-  } else {
-    const newItem={id:uid(),name,category:cat,status:STATE.selectedStatus,estimatedPrice,updated:Date.now()};
-    await saveRecord('items', newItem);
-  }
+  // Capture editingItemId BEFORE closing the modal — closing triggers re-renders
+  // that can reset STATE.editingItemId to null
+  const editingId=STATE.editingItemId;
+  STATE.editingItemId=null; // clear immediately so it can't bleed into next open
   closeModal('add-overlay');
+  if(editingId){
+    // Re-look up fresh from STATE in case Firebase updated it during the edit
+    const existing=STATE.items.find(i=>i.id===editingId);
+    if(existing){
+      await saveRecord('items',{...existing,name,category:cat,status:STATE.selectedStatus,estimatedPrice,updated:Date.now()});
+    }
+  } else {
+    await saveRecord('items',{id:uid(),name,category:cat,status:STATE.selectedStatus,estimatedPrice,updated:Date.now()});
+  }
 }
 
-function openDetail(id){
+function openEditFromDetail(){
+  // Capture the ID now — the item object reference may go stale
+  // if Firebase fires between closeModal and setTimeout
+  const id=STATE.detailItemId;
+  closeModal('detail-overlay');
+  setTimeout(()=>{
+    const item=STATE.items.find(i=>i.id===id);
+    if(item) openEditModal(item);
+  },200);
+}
+
+async function deleteItem(){
+  const id=STATE.detailItemId;
+  const item=STATE.items.find(i=>i.id===id);
+  if(!item) return;
+  if(!confirm(`Remove "${item.name}"?`)) return;
+  // Clear state and close BEFORE the async delete so UI is clean
+  STATE.detailItemId=null;
+  closeModal('detail-overlay');
+  await deleteRecord('items',id);
+}
   STATE.detailItemId=id;
   const item=STATE.items.find(i=>i.id===id);
   if(!item) return;
@@ -1319,20 +1344,6 @@ function openDetail(id){
 async function updateStatus(status){
   const item=STATE.items.find(i=>i.id===STATE.detailItemId);
   if(item){ await saveRecord('items',{...item,status,updated:Date.now()}); }
-  closeModal('detail-overlay');
-}
-
-function openEditFromDetail(){
-  const item=STATE.items.find(i=>i.id===STATE.detailItemId);
-  closeModal('detail-overlay');
-  setTimeout(()=>openEditModal(item),200);
-}
-
-async function deleteItem(){
-  const item=STATE.items.find(i=>i.id===STATE.detailItemId);
-  if(!item) return;
-  if(!confirm(`Remove "${item.name}"?`)) return;
-  await deleteRecord('items', STATE.detailItemId);
   closeModal('detail-overlay');
 }
 
