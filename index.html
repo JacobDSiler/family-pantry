@@ -563,11 +563,15 @@ async function save(k, data){
   try{ await set(ref(db, dbPath(k)), data); }catch(e){ console.error('Firebase write error', e); }
 }
 
-// Save a single item/store/shop by its id (avoids full-array overwrites)
+// Save a single item/store/shop by its id (avoids full-collection overwrites)
 async function saveRecord(collection, record){
+  if(!record.id){ console.error('saveRecord called without id', record); return; }
+  if(/^\d+$/.test(String(record.id))){ console.error('saveRecord called with numeric id — refusing', record); return; }
   try{ await set(ref(db, dbPath(collection)+'/'+record.id), record); }catch(e){ console.error(e); }
 }
 async function deleteRecord(collection, id){
+  if(!id){ console.error('deleteRecord called without id'); return; }
+  if(/^\d+$/.test(String(id))){ console.error('deleteRecord called with numeric id — refusing', id); return; }
   try{ await remove(ref(db, dbPath(collection)+'/'+id)); }catch(e){ console.error(e); }
 }
 
@@ -764,33 +768,54 @@ async function loadAllData(){
   document.getElementById('settings-currency').value = STATE.currency;
   document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
 
-  // Seed defaults if family is brand new
-  const existingItems = await load('items', null);
-  if(!existingItems){
+  // Check if family exists and fix any broken numeric-keyed data from array seeding
+  const existingRaw = await load('items', null);
+  if(!existingRaw){
+    // Brand new family — seed with proper keyed objects
     const defaultItems = getDefaultItems();
     const itemsObj = {};
-    defaultItems.forEach(i => itemsObj[i.id] = i);
+    defaultItems.forEach(i => { itemsObj[i.id] = i; });
     await save('items', itemsObj);
     await save('cats',  DEFAULT_CATS);
     await save('stores', {});
     await save('shops',  {});
+  } else {
+    // Check if items have numeric keys (broken array conversion) and repair
+    const keys = Object.keys(existingRaw);
+    const hasNumericKeys = keys.some(k => /^\d+$/.test(k));
+    if(hasNumericKeys){
+      console.log('Repairing numeric-keyed items...');
+      const repaired = {};
+      Object.values(existingRaw).forEach(item => {
+        // Give items with numeric/missing IDs a proper ID
+        if(!item.id || /^\d+$/.test(String(item.id))){
+          item = {...item, id: uid()};
+        }
+        repaired[item.id] = item;
+      });
+      await save('items', repaired);
+    }
   }
 
   // Subscribe to real-time updates
-  // Firebase stores arrays as keyed objects — always normalise to array
   subscribe('items', val => {
-    STATE.items = val ? Object.values(val) : [];
+    if(!val){ STATE.items=[]; render(); return; }
+    // Always normalise — ensure every item has a proper string id
+    STATE.items = Object.entries(val).map(([k, item]) => {
+      if(!item.id || /^\d+$/.test(String(item.id))) return {...item, id: k};
+      return item;
+    });
     render();
   });
   subscribe('cats', val => {
     STATE.categories = val ? (Array.isArray(val) ? val : Object.values(val)) : DEFAULT_CATS;
   });
   subscribe('stores', val => {
-    STATE.stores = val ? Object.values(val) : [];
+    STATE.stores = val ? Object.entries(val).map(([k,s]) => s.id ? s : {...s,id:k}) : [];
     if(STATE.mode==='stores') renderStoresTab();
   });
   subscribe('shops', val => {
-    STATE.shopLogs = val ? Object.values(val) : [];
+    STATE.shopLogs = val ? Object.entries(val).map(([k,s]) => s.id ? s : {...s,id:k}) : [];
     if(STATE.mode === 'history') renderHistoryTab();
   });
 }
