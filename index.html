@@ -306,11 +306,23 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 .ingredient-del{background:none;border:none;cursor:pointer;color:var(--text2);font-size:1rem;padding:2px 6px;opacity:0.5;transition:opacity 0.15s;}
 .ingredient-del:hover{opacity:1;color:#c0392b;}
 
-.step-row{display:flex;gap:12px;padding:12px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;margin-bottom:6px;align-items:flex-start;}
-.step-num{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:700;color:var(--cook-accent);flex-shrink:0;min-width:24px;}
-.step-text{font-size:0.9rem;line-height:1.5;flex:1;}
-.step-del{background:none;border:none;cursor:pointer;color:var(--text2);font-size:1rem;padding:2px 6px;opacity:0.5;transition:opacity 0.15s;flex-shrink:0;}
-.step-del:hover{opacity:1;color:#c0392b;}
+.step-row{display:flex;gap:10px;padding:10px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;margin-bottom:6px;align-items:flex-start;transition:box-shadow 0.15s,opacity 0.15s;}
+.step-row.dragging{opacity:0.4;box-shadow:0 4px 20px rgba(0,0,0,0.15);}
+.step-row.drag-over{border-color:var(--cook-accent);box-shadow:0 0 0 2px var(--cook-accent);}
+.step-drag-handle{cursor:grab;color:var(--border);font-size:1.1rem;padding:2px 2px;flex-shrink:0;touch-action:none;user-select:none;line-height:1.6;}
+.step-drag-handle:active{cursor:grabbing;}
+.step-num{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:700;color:var(--cook-accent);flex-shrink:0;min-width:22px;line-height:1.6;}
+.step-text{font-size:0.9rem;line-height:1.5;flex:1;word-break:break-word;}
+.step-edit-area{flex:1;display:flex;flex-direction:column;gap:6px;}
+.step-edit-textarea{width:100%;padding:8px 10px;border:1.5px solid var(--cook-accent);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.9rem;line-height:1.5;resize:vertical;min-height:60px;outline:none;}
+.step-edit-actions{display:flex;gap:6px;}
+.step-actions{display:flex;gap:2px;flex-shrink:0;}
+.step-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:0.85rem;padding:3px 5px;opacity:0.55;transition:opacity 0.15s,color 0.15s;line-height:1;}
+.step-btn:hover{opacity:1;}
+.step-btn.edit:hover{color:var(--cook-accent);}
+.step-btn.del:hover{color:#c0392b;}
+.step-btn.move{font-size:0.75rem;}
+.step-btn.move:hover{color:var(--cook-accent);}
 
 .add-ingredient-row{display:flex;gap:6px;margin-bottom:6px;}
 .add-ingredient-row select,.add-ingredient-row input{flex:1;}
@@ -661,11 +673,23 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 
     <div class="recipe-section-title">Ingredients</div>
     <div id="recipe-ingredients-list"></div>
-    <div class="add-ingredient-row">
+
+    <!-- Ingredient source tabs -->
+    <div style="display:flex;gap:0;margin-bottom:8px;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;">
+      <button id="ing-tab-pantry" onclick="switchIngTab('pantry')" style="flex:1;padding:8px;border:none;background:var(--cook-accent);color:#fff;font-size:0.82rem;font-weight:600;cursor:pointer;">📦 From Pantry</button>
+      <button id="ing-tab-custom" onclick="switchIngTab('custom')" style="flex:1;padding:8px;border:none;background:var(--surface2);color:var(--text2);font-size:0.82rem;font-weight:600;cursor:pointer;">✏️ New Item</button>
+    </div>
+    <div id="ing-panel-pantry" class="add-ingredient-row">
       <select class="form-select" id="recipe-ing-item-select" style="flex:2;"></select>
       <input class="form-input" id="recipe-ing-qty-input" placeholder="Qty e.g. 2 cups" style="flex:1;" />
       <button class="new-cat-btn" id="btn-add-ingredient">Add</button>
     </div>
+    <div id="ing-panel-custom" class="add-ingredient-row" style="display:none;">
+      <input class="form-input" id="recipe-ing-custom-name" placeholder="Item name e.g. Tahini" style="flex:2;" />
+      <input class="form-input" id="recipe-ing-custom-qty" placeholder="Qty e.g. 3 tbsp" style="flex:1;" />
+      <button class="new-cat-btn" id="btn-add-custom-ingredient">Add</button>
+    </div>
+    <div id="ing-custom-note" style="display:none;font-size:0.75rem;color:var(--cook-accent);padding:4px 2px 6px;">⚡ New items are added to your pantry as "Out" and will appear on your shopping list.</div>
 
     <div class="recipe-section-title">Steps</div>
     <div id="recipe-steps-list"></div>
@@ -797,7 +821,7 @@ let STATE = {
   selectedStoreId: null,
   // filters
   pf: {needs:false,recent:true,alpha:false},
-  sf: {needsOnly:false,recent:true,alpha:false},
+  sf: {needsOnly:false,recent:true,alpha:false,showSkipped:false},
   hf: {from:'',to:''},
   // edit state
   editingItemId: null,
@@ -811,6 +835,8 @@ let STATE = {
   focusRecipeId: null,
   focusStep: 0,
   focusGrabbed: {},
+  // shopping skip — session-local, not synced to Firebase
+  skippedIds: new Set(),
   // exchange rates cache
   rates: {},
   ratesTs: 0,
@@ -1077,10 +1103,13 @@ function renderFilterBar(){
       <div class="filter-pill ${pf.alpha?'active':''}"  onclick="toggleFilter('alpha')">A–Z</div>`;
   } else if(STATE.mode==='shopping'){
     const sf=STATE.sf;
+    const skippedCount=STATE.skippedIds.size;
     bar.innerHTML=`
       <div class="filter-pill needs-pill ${sf.needsOnly?'active':''}" onclick="toggleShopFilter('needsOnly')">⚡ Needs Only</div>
-      <div class="filter-pill ${sf.recent?'active':''}" onclick="toggleShopFilter('recent')">🕐 Most Recent</div>
-      <div class="filter-pill ${sf.alpha?'active':''}"  onclick="toggleShopFilter('alpha')">A–Z</div>`;
+      <div class="filter-pill ${sf.recent?'active':''}" onclick="toggleShopFilter('recent')">🕐 Recent</div>
+      <div class="filter-pill ${sf.alpha?'active':''}"  onclick="toggleShopFilter('alpha')">A–Z</div>
+      ${skippedCount?`<div class="filter-pill ${sf.showSkipped?'active':''}" onclick="toggleShopFilter('showSkipped')">👁 Skipped (${skippedCount})</div>`:''}
+      ${skippedCount?`<div class="filter-pill" onclick="clearSkipped()" style="color:#c0392b;">✕ Clear Skipped</div>`:''}`;
   } else if(STATE.mode==='history'){
     bar.innerHTML=`
       <div style="display:flex;align-items:center;gap:8px;flex:1;">
@@ -1245,45 +1274,73 @@ function calcEstimatedTotal(){
 
 function renderShoppingTab(){
   renderStats();
-  // Store selector
   const store=STATE.stores.find(s=>s.id===STATE.selectedStoreId);
   document.getElementById('ssl-name').textContent=store?store.name+' — '+store.city:'Select a store…';
-  // Estimated total bar
   const est=calcEstimatedTotal();
   document.getElementById('etb-amount').textContent=est?fmt(est):'—';
-  const needCount=STATE.items.filter(i=>i.status!=='full').length;
+  const needCount=STATE.items.filter(i=>i.status!=='full'&&!STATE.skippedIds.has(i.id)).length;
   document.getElementById('etb-note').textContent=needCount+' item'+(needCount!==1?'s':'')+' needed';
 
-  // Banner sub
   const sub=document.getElementById('shop-banner-sub');
   if(STATE.sf.needsOnly) sub.textContent=`${needCount} item${needCount!==1?'s':''} needed · Out first, then Low`;
   else sub.textContent='Out & Low first · stocked items shown below';
 
   const container=document.getElementById('items-container');
   if(!STATE.items.length){container.innerHTML=empty('🛒','Nothing tracked yet!','Tap "+ Add" to add items.');return;}
+
   let html='';
   for(const cat of getCatsWithItems()){
     const catItems=getCatItems(cat);
-    const needItems=sorted(catItems.filter(i=>i.status!=='full'),STATE.sf.recent,STATE.sf.alpha);
+    // Partition: active needs, skipped needs, stocked
+    const activeNeeds=sorted(
+      catItems.filter(i=>i.status!=='full'&&!STATE.skippedIds.has(i.id)),
+      STATE.sf.recent,STATE.sf.alpha);
+    const skippedNeeds=catItems.filter(i=>i.status!=='full'&&STATE.skippedIds.has(i.id));
     const stockItems=sorted(catItems.filter(i=>i.status==='full'),STATE.sf.recent,STATE.sf.alpha);
-    if(STATE.sf.needsOnly){
-      if(!needItems.length) continue;
-      html+=`<div class="category-section">
-        ${categoryHeader(cat, needItems.length)}
-        ${needItems.map(i=>itemCard(i,true)).join('')}
-      </div>`;
-    } else {
-      if(!needItems.length&&!stockItems.length) continue;
-      html+=`<div class="category-section">
-        ${categoryHeader(cat, catItems.length)}
-        ${needItems.map(i=>itemCard(i,true)).join('')}
-        ${needItems.length&&stockItems.length?'<div class="section-divider"><span>Already Stocked</span></div>':''}
-        ${stockItems.map(i=>itemCard(i,false)).join('')}
-      </div>`;
-    }
+
+    const showSkipped=STATE.sf.showSkipped;
+    const visibleNeeds=activeNeeds;
+    const visibleStocked=STATE.sf.needsOnly?[]:stockItems;
+    const visibleSkipped=showSkipped?skippedNeeds:[];
+
+    if(!visibleNeeds.length&&!visibleStocked.length&&!visibleSkipped.length) continue;
+    const displayCount=visibleNeeds.length+(showSkipped?skippedNeeds.length:0)+(STATE.sf.needsOnly?0:stockItems.length);
+
+    html+=`<div class="category-section">
+      ${categoryHeader(cat, displayCount)}
+      ${visibleNeeds.map(i=>shoppingItemCard(i)).join('')}
+      ${visibleNeeds.length&&visibleStocked.length?'<div class="section-divider"><span>Already Stocked</span></div>':''}
+      ${visibleStocked.map(i=>itemCard(i,false)).join('')}
+      ${visibleSkipped.length?'<div class="section-divider"><span style="color:var(--text2);">Skipped this trip</span></div>':''}
+      ${visibleSkipped.map(i=>shoppingItemCard(i,true)).join('')}
+    </div>`;
   }
   if(!html) html=STATE.sf.needsOnly?empty('🎉','Nothing needed!','Everything is stocked!'):empty('🛒','Nothing tracked yet!','Tap "+ Add" to start.');
   container.innerHTML=html;
+}
+
+function shoppingItemCard(item, isSkipped=false){
+  const labels={out:'OUT',low:'LOW',full:'FULL'};
+  const store=STATE.stores.find(s=>s.id===STATE.selectedStoreId);
+  const storePrices=item.storePrices||{};
+  const storePrice=store&&storePrices[store.id];
+  const displayPrice=storePrice||item.estimatedPrice;
+  const priceTag=displayPrice?`<div class="item-price-tag">~${fmt(displayPrice)}</div>`:'';
+  const dotContent=item.status==='out'?'✕':item.status==='low'?'▲':'✓';
+  return `<div class="item-card status-${item.status}${isSkipped?' skipped-item':''}" style="${isSkipped?'opacity:0.45;':''}">
+    <div class="status-dot" onclick="openDetail('${item.id}')">${dotContent}</div>
+    <div class="item-info" onclick="openDetail('${item.id}')">
+      <div class="item-name">${escHtml(item.name)}</div>
+      <div class="item-meta">Updated ${timeAgo(item.updated)}</div>
+      ${priceTag}
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+      <div class="status-badge">${labels[item.status]}</div>
+      <button onclick="toggleSkipItem('${item.id}')" style="font-size:0.68rem;background:none;border:1px solid var(--border);border-radius:50px;padding:2px 8px;cursor:pointer;color:var(--text2);white-space:nowrap;">
+        ${isSkipped?'↩ Unskip':'⏭ Skip'}
+      </button>
+    </div>
+  </div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1834,7 +1891,51 @@ function openRecipeDetail(id){
   `;
 }
 
-// ── Recipe Edit Modal ──
+function toggleSkipItem(id){
+  if(STATE.skippedIds.has(id)) STATE.skippedIds.delete(id);
+  else STATE.skippedIds.add(id);
+  renderShoppingTab();
+  renderFilterBar();
+}
+function clearSkipped(){
+  STATE.skippedIds.clear();
+  STATE.sf.showSkipped=false;
+  render();
+}
+
+// ── Ingredient tab switcher ──
+function switchIngTab(tab){
+  const isPantry=tab==='pantry';
+  document.getElementById('ing-tab-pantry').style.background=isPantry?'var(--cook-accent)':'var(--surface2)';
+  document.getElementById('ing-tab-pantry').style.color=isPantry?'#fff':'var(--text2)';
+  document.getElementById('ing-tab-custom').style.background=isPantry?'var(--surface2)':'var(--cook-accent)';
+  document.getElementById('ing-tab-custom').style.color=isPantry?'var(--text2)':'#fff';
+  document.getElementById('ing-panel-pantry').style.display=isPantry?'flex':'none';
+  document.getElementById('ing-panel-custom').style.display=isPantry?'none':'flex';
+  document.getElementById('ing-custom-note').style.display=isPantry?'none':'block';
+}
+
+async function addCustomIngredient(){
+  const name=document.getElementById('recipe-ing-custom-name').value.trim();
+  const qty=document.getElementById('recipe-ing-custom-qty').value.trim();
+  if(!name) return;
+  // Add to recipe ingredients list
+  _recipeIngredients.push({name,qty});
+  renderRecipeIngredientsList();
+  document.getElementById('recipe-ing-custom-name').value='';
+  document.getElementById('recipe-ing-custom-qty').value='';
+  // Check if item already exists in pantry (case-insensitive)
+  const exists=STATE.items.find(i=>i.name.toLowerCase()===name.toLowerCase());
+  if(!exists){
+    // Create new pantry item as "out"
+    const newItem={id:uid(),name,category:'Other',status:'out',estimatedPrice:null,updated:Date.now()};
+    await saveRecord('items',newItem);
+    // Also add to the dropdown for subsequent picks
+    const opt=document.createElement('option');
+    opt.value=name; opt.textContent=name;
+    document.getElementById('recipe-ing-item-select').appendChild(opt);
+  }
+}
 let _recipeIngredients=[]; // working copy during edit
 let _recipeSteps=[];
 
@@ -1849,6 +1950,8 @@ function openRecipeEdit(id){
   document.getElementById('btn-delete-recipe').style.display=r?'block':'none';
   _recipeIngredients=r?(r.ingredients||[]).map(i=>({...i})):[];
   _recipeSteps=r?[...(r.steps||[])]:[];
+  _editingStepIdx=null;
+  _dragSrcIdx=null;
   // Populate item picker
   const sel=document.getElementById('recipe-ing-item-select');
   sel.innerHTML=`<option value="">Pick an item…</option>`+
@@ -1869,14 +1972,113 @@ function renderRecipeIngredientsList(){
       </div>`).join('') || '<div style="color:var(--text2);font-size:0.85rem;padding:4px 0 8px;">No ingredients yet.</div>';
 }
 
+// Track which step is being inline-edited
+let _editingStepIdx = null;
+// Drag state
+let _dragSrcIdx = null;
+
 function renderRecipeStepsList(){
-  document.getElementById('recipe-steps-list').innerHTML=
-    _recipeSteps.map((s,idx)=>`
-      <div class="step-row">
-        <span class="step-num">${idx+1}</span>
-        <span class="step-text">${escHtml(s)}</span>
-        <button class="step-del" onclick="removeRecipeStep(${idx})">✕</button>
-      </div>`).join('') || '<div style="color:var(--text2);font-size:0.85rem;padding:4px 0 8px;">No steps yet.</div>';
+  const container = document.getElementById('recipe-steps-list');
+  if(!_recipeSteps.length){
+    container.innerHTML='<div style="color:var(--text2);font-size:0.85rem;padding:4px 0 8px;">No steps yet.</div>';
+    return;
+  }
+  const isTouchDevice = window.matchMedia('(hover:none)').matches;
+  container.innerHTML = _recipeSteps.map((s, idx) => {
+    const isEditing = _editingStepIdx === idx;
+    return `<div class="step-row" draggable="true" data-idx="${idx}" id="step-row-${idx}">
+      ${isTouchDevice
+        ? `<div class="step-actions" style="flex-direction:column;gap:0;">
+             <button class="step-btn move" onclick="moveStep(${idx},-1)" title="Move up" ${idx===0?'style="opacity:0.15;pointer-events:none;"':''}>▲</button>
+             <button class="step-btn move" onclick="moveStep(${idx},1)" title="Move down" ${idx===_recipeSteps.length-1?'style="opacity:0.15;pointer-events:none;"':''}>▼</button>
+           </div>`
+        : `<div class="step-drag-handle" title="Drag to reorder">⠿</div>`
+      }
+      <span class="step-num">${idx+1}</span>
+      ${isEditing
+        ? `<div class="step-edit-area">
+             <textarea class="step-edit-textarea" id="step-edit-${idx}">${escHtml(s)}</textarea>
+             <div class="step-edit-actions">
+               <button class="btn btn-secondary" style="flex:1;padding:8px;" onclick="cancelEditStep()">Cancel</button>
+               <button class="btn btn-primary" style="flex:1;padding:8px;background:var(--cook-accent);" onclick="saveEditStep(${idx})">Save</button>
+             </div>
+           </div>`
+        : `<span class="step-text">${escHtml(s)}</span>`
+      }
+      ${isEditing ? '' : `
+        <div class="step-actions">
+          <button class="step-btn edit" onclick="startEditStep(${idx})" title="Edit">✏️</button>
+          <button class="step-btn del"  onclick="removeRecipeStep(${idx})" title="Delete">✕</button>
+        </div>`
+      }
+    </div>`;
+  }).join('');
+
+  // Wire up drag-and-drop on the rendered rows (desktop only)
+  if(!isTouchDevice) setupStepDragDrop();
+}
+
+function setupStepDragDrop(){
+  const rows = document.querySelectorAll('#recipe-steps-list .step-row');
+  rows.forEach(row => {
+    row.addEventListener('dragstart', e => {
+      _dragSrcIdx = parseInt(row.dataset.idx);
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.querySelectorAll('.step-row').forEach(r => r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.step-row').forEach(r => r.classList.remove('drag-over'));
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      const destIdx = parseInt(row.dataset.idx);
+      if(_dragSrcIdx === null || _dragSrcIdx === destIdx) return;
+      const moved = _recipeSteps.splice(_dragSrcIdx, 1)[0];
+      _recipeSteps.splice(destIdx, 0, moved);
+      _dragSrcIdx = null;
+      _editingStepIdx = null;
+      renderRecipeStepsList();
+    });
+  });
+}
+
+function moveStep(idx, dir){
+  const newIdx = idx + dir;
+  if(newIdx < 0 || newIdx >= _recipeSteps.length) return;
+  const tmp = _recipeSteps[idx];
+  _recipeSteps[idx] = _recipeSteps[newIdx];
+  _recipeSteps[newIdx] = tmp;
+  _editingStepIdx = null;
+  renderRecipeStepsList();
+}
+
+function startEditStep(idx){
+  _editingStepIdx = idx;
+  renderRecipeStepsList();
+  // Focus the textarea and place cursor at end
+  const ta = document.getElementById(`step-edit-${idx}`);
+  if(ta){ ta.focus(); ta.selectionStart = ta.selectionEnd = ta.value.length; }
+}
+
+function saveEditStep(idx){
+  const ta = document.getElementById(`step-edit-${idx}`);
+  if(!ta) return;
+  const val = ta.value.trim();
+  if(val) _recipeSteps[idx] = val;
+  _editingStepIdx = null;
+  renderRecipeStepsList();
+}
+
+function cancelEditStep(){
+  _editingStepIdx = null;
+  renderRecipeStepsList();
 }
 
 function addRecipeIngredient(){
@@ -2169,6 +2371,8 @@ function bindEvents(){
   document.getElementById('btn-delete-recipe').addEventListener('click', deleteRecipe);
   document.getElementById('btn-add-ingredient').addEventListener('click', addRecipeIngredient);
   document.getElementById('recipe-ing-qty-input').addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); addRecipeIngredient(); }});
+  document.getElementById('btn-add-custom-ingredient').addEventListener('click', addCustomIngredient);
+  document.getElementById('recipe-ing-custom-name').addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); addCustomIngredient(); }});
   document.getElementById('btn-add-step').addEventListener('click', addRecipeStep);
   document.getElementById('recipe-step-input').addEventListener('keydown', e => { if(e.key==='Enter' && e.ctrlKey){ e.preventDefault(); addRecipeStep(); }});
   // NOTE: No backdrop-click-to-close on recipe modal — too easy to lose work
@@ -2190,6 +2394,14 @@ function bindEvents(){
   window.toggleFocusGrab         = toggleFocusGrab;
   window.removeRecipeIngredient  = removeRecipeIngredient;
   window.removeRecipeStep        = removeRecipeStep;
+  window.startEditStep           = startEditStep;
+  window.saveEditStep            = saveEditStep;
+  window.cancelEditStep          = cancelEditStep;
+  window.moveStep                = moveStep;
+  window.renderCookTab           = renderCookTab;
+  window.toggleSkipItem          = toggleSkipItem;
+  window.clearSkipped            = clearSkipped;
+  window.switchIngTab            = switchIngTab;
   window.STATE                   = STATE;
   window.renderFilterBar         = renderFilterBar;
   window.renderHistoryTab        = renderHistoryTab;
