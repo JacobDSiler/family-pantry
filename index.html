@@ -615,7 +615,10 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 <!-- FOCUS / COOKING MODE OVERLAY -->
 <div class="focus-overlay" id="focus-overlay">
   <div class="focus-header">
-    <div class="focus-recipe-name" id="focus-recipe-name">Recipe</div>
+    <div>
+      <div class="focus-recipe-name" id="focus-recipe-name">Recipe</div>
+      <div id="focus-time-remaining" style="font-size:0.72rem;color:rgba(255,255,255,0.5);margin-top:2px;"></div>
+    </div>
     <button class="focus-exit-btn" id="btn-exit-focus">✕ Exit</button>
   </div>
   <div class="focus-body">
@@ -648,7 +651,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Emoji</label>
-        <input class="form-input" id="recipe-emoji-input" placeholder="🍝" maxlength="4" style="text-align:center;font-size:1.4rem;" />
+        <input class="form-input" id="recipe-emoji-input" placeholder="🍽️" style="text-align:center;font-size:1.4rem;" />
       </div>
       <div class="form-group">
         <label class="form-label">Cook Time</label>
@@ -672,7 +675,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     </div>
 
     <div class="btn-row" style="margin-top:22px;">
-      <button class="btn btn-secondary" id="btn-cancel-recipe">Cancel</button>
+      <button class="btn btn-secondary" id="btn-cancel-recipe">Discard</button>
       <button class="btn btn-danger"    id="btn-delete-recipe" style="display:none;">🗑</button>
       <button class="btn btn-primary" style="background:var(--cook-accent);" id="btn-save-recipe">Save Recipe</button>
     </div>
@@ -1966,27 +1969,35 @@ function renderFocusStep(){
   const current=STATE.focusStep;
   const area=document.getElementById('focus-steps-area');
 
+  // Time remaining calculation
+  const timeEl=document.getElementById('focus-time-remaining');
+  const totalMins=parseTimeToMinutes(r.cookTime);
+  if(totalMins && steps.length && current < steps.length){
+    const minsPerStep = totalMins / steps.length;
+    const remaining = Math.round(minsPerStep * (steps.length - current));
+    timeEl.textContent = `⏱ ~${remaining} min remaining`;
+  } else {
+    timeEl.textContent = r.cookTime ? `⏱ ${r.cookTime} total` : '';
+  }
+
   if(current>=steps.length){
-    // All done!
     area.innerHTML=`<div class="focus-complete-banner">
       <div class="big-emoji">🎉</div>
       <h2>All done!</h2>
       <p>${escHtml(r.name)} is ready. Enjoy!</p>
     </div>`;
-    const btn=document.getElementById('btn-focus-next');
-    btn.textContent='🏠 Back to Recipes';
-    btn.className='focus-next-btn done';
+    document.getElementById('btn-focus-next').textContent='🏠 Back to Recipes';
+    document.getElementById('btn-focus-next').className='focus-next-btn done';
+    timeEl.textContent='';
     return;
   }
 
-  // Done steps collapsed at top
   const doneHtml=steps.slice(0,current).map((s,i)=>`
     <div class="focus-done-item">
       <span class="done-check">✓</span>
-      <span>Step ${i+1}: ${escHtml(s.length>40?s.slice(0,40)+'…':s)}</span>
+      <span>Step ${i+1}: ${escHtml(s.length>50?s.slice(0,50)+'…':s)}</span>
     </div>`).join('');
 
-  // Upcoming steps (faint)
   const upcomingHtml=steps.slice(current+1).map((s,i)=>`
     <div class="focus-upcoming-item">
       <span class="focus-upcoming-num">${current+i+2}</span>
@@ -2005,7 +2016,6 @@ function renderFocusStep(){
   btn.textContent=current===steps.length-1?'✓ Finish Cooking →':'Mark Step Done →';
   btn.className='focus-next-btn';
 
-  // Render ingredients panel
   const ings=r.ingredients||[];
   document.getElementById('focus-ingredients-panel').innerHTML=
     ings.length?ings.map((ing,idx)=>`
@@ -2014,6 +2024,17 @@ function renderFocusStep(){
         <span>${escHtml(ing.name)}</span>
       </div>`).join('')
     :'<div style="color:rgba(255,255,255,0.4);font-size:0.85rem;">No ingredients listed.</div>';
+}
+
+// Parse cook time string like "45 min", "1h 30m", "2 hours" → minutes
+function parseTimeToMinutes(str){
+  if(!str) return null;
+  str=str.toLowerCase();
+  let mins=0;
+  const h=str.match(/(\d+)\s*h/); if(h) mins+=parseInt(h[1])*60;
+  const m=str.match(/(\d+)\s*m/); if(m) mins+=parseInt(m[1]);
+  if(!mins){ const n=str.match(/(\d+)/); if(n) mins=parseInt(n[1]); }
+  return mins||null;
 }
 
 function advanceFocusStep(){
@@ -2134,12 +2155,23 @@ function bindEvents(){
   document.getElementById('btn-exit-focus').addEventListener('click', exitFocusMode);
   document.getElementById('btn-focus-next').addEventListener('click', advanceFocusStep);
   document.getElementById('btn-toggle-ingredients').addEventListener('click', toggleFocusIngredients);
-  document.getElementById('btn-cancel-recipe').addEventListener('click', () => closeModal('recipe-edit-overlay'));
+  document.getElementById('btn-cancel-recipe').addEventListener('click', () => {
+    const hasName = document.getElementById('recipe-name-input').value.trim();
+    const hasIngredients = _recipeIngredients.length > 0;
+    const hasSteps = _recipeSteps.length > 0;
+    if(hasName || hasIngredients || hasSteps){
+      if(!confirm('Discard this recipe? All unsaved changes will be lost.')) return;
+    }
+    STATE.editingRecipeId = null;
+    closeModal('recipe-edit-overlay');
+  });
   document.getElementById('btn-save-recipe').addEventListener('click', saveRecipe);
   document.getElementById('btn-delete-recipe').addEventListener('click', deleteRecipe);
   document.getElementById('btn-add-ingredient').addEventListener('click', addRecipeIngredient);
+  document.getElementById('recipe-ing-qty-input').addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); addRecipeIngredient(); }});
   document.getElementById('btn-add-step').addEventListener('click', addRecipeStep);
-  document.getElementById('recipe-edit-overlay').addEventListener('click', e => { if(e.target===document.getElementById('recipe-edit-overlay')) closeModal('recipe-edit-overlay'); });
+  document.getElementById('recipe-step-input').addEventListener('keydown', e => { if(e.key==='Enter' && e.ctrlKey){ e.preventDefault(); addRecipeStep(); }});
+  // NOTE: No backdrop-click-to-close on recipe modal — too easy to lose work
 
   // Expose functions used in dynamically-rendered innerHTML onclick attributes
   window.openDetail              = openDetail;
