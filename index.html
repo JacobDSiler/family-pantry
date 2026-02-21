@@ -1070,6 +1070,10 @@ const DEFAULT_CATS = ['Produce','Dairy & Eggs','Pantry','Beverages','Frozen','Sn
 const CAT_EMOJI_MAP = {'Produce':'🥦','Dairy & Eggs':'🥛','Pantry':'🫙','Beverages':'🧃','Frozen':'🧊','Snacks':'🍿','Household':'🧹','Meat & Fish':'🥩','Bakery':'🍞','Condiments':'🧴','Other':'📦'};
 const RANK = {out:0,low:1,full:2};
 
+// PWA install state — declared early so renderPantry can reference them
+let _pwaPrompt = null;
+let _pwaInstalled = false;
+
 // ══════════════════════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1188,6 +1192,17 @@ async function init(){
   if(settings && settings.familyCode){
     STATE.familyCode = settings.familyCode;
     STATE.currency   = settings.currency||'USD';
+
+    // Admin session persisted
+    if(STATE.familyCode === 'ADMIN-1337'){
+      STATE.isAdmin = true;
+      hideOnboarding();
+      await loadAdminData();
+      setMode('admin');
+      updateFamilyBadge();
+      return;
+    }
+
     await loadAllData();
     hideOnboarding();
   } else {
@@ -1304,9 +1319,12 @@ async function joinFamily(){
   if(!code||code.length<4){ alert('Please enter a valid family code.'); return; }
   if(code === 'ADMIN-1337'){
     STATE.isAdmin = true;
+    STATE.familyCode = 'ADMIN-1337';
+    saveSettings({familyCode:'ADMIN-1337', currency:STATE.currency});
     hideOnboarding();
     await loadAdminData();
     setMode('admin');
+    updateFamilyBadge();
     return;
   }
   STATE.familyCode = code;
@@ -1333,8 +1351,10 @@ function hideOnboarding(){
 }
 
 function updateFamilyBadge(){
-  document.getElementById('family-badge-btn').textContent = '👨‍👩‍👧‍👦 ' + (STATE.familyCode||'—');
-  document.getElementById('family-code-display').value = STATE.familyCode||'';
+  const badge = document.getElementById('family-badge-btn');
+  if(badge) badge.textContent = '👨‍👩‍👧‍👦 ' + (STATE.familyCode||'—');
+  const codeDisplay = document.getElementById('family-code-display');
+  if(codeDisplay) codeDisplay.value = STATE.familyCode||'';
 }
 
 function copyFamilyCode(){
@@ -3451,9 +3471,6 @@ function bindEvents(){
 // ══════════════════════════════════════════════════════════════════════════════
 // PWA INSTALL
 // ══════════════════════════════════════════════════════════════════════════════
-let _pwaPrompt = null;
-let _pwaInstalled = false;
-
 function initPWA(){
   // Check if already running as installed PWA
   if(window.matchMedia('(display-mode: standalone)').matches ||
