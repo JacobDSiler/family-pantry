@@ -16,6 +16,7 @@
   --shop-bg: #f0f5f1; --shop-accent: #2d6a4f;
   --hist-bg: #f5f0fa; --hist-accent: #5b3d8f;
   --stores-bg: #f0f4fa; --stores-accent: #1e4d8c;
+  --cook-bg: #fdf6ee; --cook-accent: #b5451b; --cook-light: #fff3ec;
   --shadow: 0 2px 12px rgba(44,36,22,0.08); --radius: 14px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -23,20 +24,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 body.mode-shopping{background:var(--shop-bg);}
 body.mode-history{background:var(--hist-bg);}
 body.mode-stores{background:var(--stores-bg);}
+body.mode-cook{background:var(--cook-bg);}
 
 /* ── HEADER ── */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px 0;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:background 0.3s,border-color 0.3s;}
 body.mode-shopping header{background:var(--shop-accent);border-bottom-color:transparent;}
 body.mode-history header{background:var(--hist-accent);border-bottom-color:transparent;}
 body.mode-stores header{background:var(--stores-accent);border-bottom-color:transparent;}
+body.mode-cook header{background:var(--cook-accent);border-bottom-color:transparent;}
 
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .logo{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;color:var(--text);letter-spacing:-0.5px;transition:color 0.3s;}
 .logo span{color:var(--accent);transition:color 0.3s;}
-body.mode-shopping .logo,.mode-history .logo,.mode-stores .logo{color:#fff;}
+body.mode-shopping .logo,.mode-history .logo,.mode-stores .logo,.mode-cook .logo{color:#fff;}
 body.mode-shopping .logo span{color:#a8d5ba;}
 body.mode-history .logo span{color:#c9aff5;}
 body.mode-stores .logo span{color:#90b8f0;}
+body.mode-cook .logo span{color:#ffc9a8;}
 
 .header-right{display:flex;align-items:center;gap:8px;}
 .family-badge{font-size:0.7rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:50px;padding:4px 10px;color:var(--text2);cursor:pointer;transition:all 0.2s;}
@@ -274,7 +278,81 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 .date-range-row .form-input{flex:1;padding:8px 12px;font-size:0.85rem;}
 .date-range-row span{color:var(--text2);font-size:0.85rem;}
 
+/* ── COOK TAB ── */
+.recipe-card{background:var(--surface);border-radius:var(--radius);padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow);cursor:pointer;border:1.5px solid var(--border);transition:transform 0.15s,border-color 0.15s;}
+.recipe-card:active{transform:scale(0.98);}
+.recipe-card-top{display:flex;align-items:flex-start;gap:12px;}
+.recipe-emoji{font-size:2rem;line-height:1;flex-shrink:0;}
+.recipe-info{flex:1;min-width:0;}
+.recipe-name{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:2px;}
+.recipe-desc{font-size:0.82rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.recipe-meta{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;}
+.recipe-chip{font-size:0.72rem;background:var(--cook-light);color:var(--cook-accent);border-radius:50px;padding:3px 10px;font-weight:500;}
+
+/* Recipe detail */
+.recipe-detail-header{background:var(--cook-accent);color:#fff;border-radius:var(--radius);padding:20px;margin-bottom:16px;position:relative;}
+.recipe-detail-emoji{font-size:3rem;margin-bottom:8px;}
+.recipe-detail-name{font-family:'Fraunces',serif;font-size:1.6rem;font-weight:700;margin-bottom:4px;}
+.recipe-detail-desc{font-size:0.88rem;opacity:0.85;margin-bottom:12px;}
+.recipe-detail-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.recipe-detail-chip{font-size:0.72rem;background:rgba(255,255,255,0.2);border-radius:50px;padding:3px 10px;}
+.start-cooking-btn{width:100%;padding:15px;background:#fff;color:var(--cook-accent);border:none;border-radius:12px;font-family:'Fraunces',serif;font-size:1.1rem;font-weight:700;cursor:pointer;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform 0.15s;}
+.start-cooking-btn:active{transform:scale(0.97);}
+
+.recipe-section-title{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin:18px 0 8px;}
+.ingredient-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;margin-bottom:6px;}
+.ingredient-qty{font-size:0.8rem;font-weight:600;color:var(--cook-accent);min-width:50px;}
+.ingredient-name{font-size:0.9rem;flex:1;}
+.ingredient-del{background:none;border:none;cursor:pointer;color:var(--text2);font-size:1rem;padding:2px 6px;opacity:0.5;transition:opacity 0.15s;}
+.ingredient-del:hover{opacity:1;color:#c0392b;}
+
+.step-row{display:flex;gap:12px;padding:12px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;margin-bottom:6px;align-items:flex-start;}
+.step-num{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:700;color:var(--cook-accent);flex-shrink:0;min-width:24px;}
+.step-text{font-size:0.9rem;line-height:1.5;flex:1;}
+.step-del{background:none;border:none;cursor:pointer;color:var(--text2);font-size:1rem;padding:2px 6px;opacity:0.5;transition:opacity 0.15s;flex-shrink:0;}
+.step-del:hover{opacity:1;color:#c0392b;}
+
+.add-ingredient-row{display:flex;gap:6px;margin-bottom:6px;}
+.add-ingredient-row select,.add-ingredient-row input{flex:1;}
+.add-step-row{display:flex;gap:6px;}
+.add-step-row textarea{flex:1;min-height:70px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.9rem;resize:vertical;}
+
+/* ── FOCUS / COOKING MODE ── */
+.focus-overlay{position:fixed;inset:0;background:#1a1008;z-index:400;display:none;flex-direction:column;overflow:hidden;}
+.focus-overlay.active{display:flex;}
+.focus-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);}
+.focus-recipe-name{font-family:'Fraunces',serif;font-size:1.1rem;color:#fff;font-weight:700;}
+.focus-exit-btn{background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50px;padding:6px 14px;font-size:0.82rem;cursor:pointer;}
+.focus-body{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.focus-steps-area{flex:1;overflow-y:auto;padding:20px 20px 0;}
+.focus-done-list{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+.focus-done-item{display:flex;align-items:center;gap:8px;opacity:0.4;font-size:0.8rem;color:#fff;padding:4px 0;transition:opacity 0.3s;}
+.focus-done-item .done-check{color:#4caf50;font-size:0.9rem;}
+.focus-current-step{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:24px 20px;margin-bottom:16px;}
+.focus-step-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:8px;}
+.focus-step-text{font-family:'Fraunces',serif;font-size:1.4rem;color:#fff;line-height:1.5;font-weight:500;}
+.focus-upcoming{display:flex;flex-direction:column;gap:6px;padding-bottom:20px;}
+.focus-upcoming-item{font-size:0.82rem;color:rgba(255,255,255,0.3);padding:6px 10px;border-radius:8px;display:flex;gap:8px;}
+.focus-upcoming-num{color:rgba(255,255,255,0.2);font-weight:600;}
+.focus-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);}
+.focus-next-btn{width:100%;padding:18px;background:var(--cook-accent);color:#fff;border:none;border-radius:14px;font-family:'Fraunces',serif;font-size:1.1rem;font-weight:700;cursor:pointer;transition:transform 0.15s,background 0.15s;}
+.focus-next-btn:active{transform:scale(0.97);}
+.focus-next-btn.done{background:#3a7d44;}
+.focus-ingredients-toggle{display:flex;justify-content:center;margin-bottom:12px;}
+.focus-ing-btn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:50px;padding:6px 16px;font-size:0.8rem;cursor:pointer;}
+.focus-ingredients-panel{background:rgba(255,255,255,0.05);border-radius:12px;padding:12px 16px;margin-bottom:12px;display:none;}
+.focus-ingredients-panel.open{display:block;}
+.focus-ing-item{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.07);font-size:0.88rem;color:rgba(255,255,255,0.8);cursor:pointer;transition:opacity 0.2s;}
+.focus-ing-item:last-child{border-bottom:none;}
+.focus-ing-item.grabbed{opacity:0.35;text-decoration:line-through;}
+.focus-ing-qty{color:var(--cook-accent);font-weight:600;font-size:0.8rem;min-width:48px;}
+.focus-complete-banner{text-align:center;padding:40px 20px;}
+.focus-complete-banner .big-emoji{font-size:4rem;margin-bottom:12px;}
+.focus-complete-banner h2{font-family:'Fraunces',serif;font-size:1.8rem;color:#fff;margin-bottom:8px;}
+.focus-complete-banner p{color:rgba(255,255,255,0.6);font-size:0.9rem;}
+
 @media(min-width:600px){main{padding:22px 24px;}}
+
 </style>
 </head>
 <body>
@@ -316,6 +394,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="mode-tab"        id="tab-shopping">🛒 Shopping</div>
     <div class="mode-tab"        id="tab-stores">🏪 Stores</div>
     <div class="mode-tab"        id="tab-history">📋 History</div>
+    <div class="mode-tab"        id="tab-cook">👨‍🍳 Cook</div>
   </div>
 </header>
 <div class="filter-bar" id="filter-bar"></div>
@@ -533,6 +612,73 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
   </div>
 </div>
 
+<!-- FOCUS / COOKING MODE OVERLAY -->
+<div class="focus-overlay" id="focus-overlay">
+  <div class="focus-header">
+    <div class="focus-recipe-name" id="focus-recipe-name">Recipe</div>
+    <button class="focus-exit-btn" id="btn-exit-focus">✕ Exit</button>
+  </div>
+  <div class="focus-body">
+    <div class="focus-steps-area" id="focus-steps-area"></div>
+    <div style="padding:0 20px;">
+      <div class="focus-ingredients-toggle">
+        <button class="focus-ing-btn" id="btn-toggle-ingredients">🧺 Show Ingredients</button>
+      </div>
+      <div class="focus-ingredients-panel" id="focus-ingredients-panel"></div>
+    </div>
+  </div>
+  <div class="focus-footer">
+    <button class="focus-next-btn" id="btn-focus-next">Mark Step Done →</button>
+  </div>
+</div>
+
+<!-- ADD / EDIT RECIPE MODAL -->
+<div class="overlay" id="recipe-edit-overlay">
+  <div class="modal" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="recipe-edit-title">New Recipe</div>
+    <div class="form-group">
+      <label class="form-label">Recipe Name</label>
+      <input class="form-input" id="recipe-name-input" placeholder="e.g. Spaghetti Bolognese" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+      <input class="form-input" id="recipe-desc-input" placeholder="A short tagline…" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Emoji</label>
+        <input class="form-input" id="recipe-emoji-input" placeholder="🍝" maxlength="4" style="text-align:center;font-size:1.4rem;" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cook Time</label>
+        <input class="form-input" id="recipe-time-input" placeholder="e.g. 45 min" />
+      </div>
+    </div>
+
+    <div class="recipe-section-title">Ingredients</div>
+    <div id="recipe-ingredients-list"></div>
+    <div class="add-ingredient-row">
+      <select class="form-select" id="recipe-ing-item-select" style="flex:2;"></select>
+      <input class="form-input" id="recipe-ing-qty-input" placeholder="Qty e.g. 2 cups" style="flex:1;" />
+      <button class="new-cat-btn" id="btn-add-ingredient">Add</button>
+    </div>
+
+    <div class="recipe-section-title">Steps</div>
+    <div id="recipe-steps-list"></div>
+    <div class="add-step-row">
+      <textarea class="form-input" id="recipe-step-input" placeholder="Describe this step…"></textarea>
+      <button class="new-cat-btn" id="btn-add-step" style="align-self:flex-end;">Add</button>
+    </div>
+
+    <div class="btn-row" style="margin-top:22px;">
+      <button class="btn btn-secondary" id="btn-cancel-recipe">Cancel</button>
+      <button class="btn btn-danger"    id="btn-delete-recipe" style="display:none;">🗑</button>
+      <button class="btn btn-primary" style="background:var(--cook-accent);" id="btn-save-recipe">Save Recipe</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 // ══════════════════════════════════════════════════════════════════════════════
 // FIREBASE SETUP
@@ -653,9 +799,15 @@ let STATE = {
   // edit state
   editingItemId: null,
   editingStoreId: null,
+  editingRecipeId: null,
   detailItemId: null,
   detailShopId: null,
   selectedStatus: 'full',
+  recipes: [],
+  // focus mode
+  focusRecipeId: null,
+  focusStep: 0,
+  focusGrabbed: {},
   // exchange rates cache
   rates: {},
   ratesTs: 0,
@@ -818,6 +970,10 @@ async function loadAllData(){
     STATE.shopLogs = val ? Object.entries(val).map(([k,s]) => s.id ? s : {...s,id:k}) : [];
     if(STATE.mode === 'history') renderHistoryTab();
   });
+  subscribe('recipes', val => {
+    STATE.recipes = val ? Object.entries(val).map(([k,r]) => r.id ? r : {...r,id:k}) : [];
+    if(STATE.mode === 'cook') renderCookTab();
+  });
 }
 
 async function finishOnboard(){
@@ -891,7 +1047,7 @@ function getDefaultItems(){
 // ══════════════════════════════════════════════════════════════════════════════
 function setMode(m){
   STATE.mode=m;
-  ['pantry','shopping','stores','history'].forEach(t=>{
+  ['pantry','shopping','stores','history','cook'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('active',t===m);
   });
   document.body.className = m==='pantry'?'':'mode-'+m;
@@ -901,6 +1057,7 @@ function setMode(m){
 
 function handleMainAdd(){
   if(STATE.mode==='stores') openAddStore();
+  else if(STATE.mode==='cook') openRecipeEdit(null);
   else openAddModal();
 }
 
@@ -959,6 +1116,7 @@ function render(){
   else if(STATE.mode==='shopping') renderShoppingTab();
   else if(STATE.mode==='stores')   renderStoresTab();
   else if(STATE.mode==='history')  renderHistoryTab();
+  else if(STATE.mode==='cook')     renderCookTab();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1611,6 +1769,279 @@ async function saveShopLog(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// COOK TAB
+// ══════════════════════════════════════════════════════════════════════════════
+function renderCookTab(){
+  document.getElementById('stats-bar').style.display='none';
+  document.getElementById('filter-bar').innerHTML='';
+  const container=document.getElementById('items-container');
+  if(!STATE.recipes.length){
+    container.innerHTML=empty('👨‍🍳','No recipes yet','Tap "+ Add" to create your first recipe.');
+    return;
+  }
+  container.innerHTML=STATE.recipes.map(r=>`
+    <div class="recipe-card" onclick="openRecipeDetail('${r.id}')">
+      <div class="recipe-card-top">
+        <div class="recipe-emoji">${escHtml(r.emoji||'🍽️')}</div>
+        <div class="recipe-info">
+          <div class="recipe-name">${escHtml(r.name)}</div>
+          <div class="recipe-desc">${escHtml(r.description||'')}</div>
+          <div class="recipe-meta">
+            ${r.cookTime?`<span class="recipe-chip">⏱ ${escHtml(r.cookTime)}</span>`:''}
+            <span class="recipe-chip">🧺 ${(r.ingredients||[]).length} ingredients</span>
+            <span class="recipe-chip">📋 ${(r.steps||[]).length} steps</span>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openRecipeDetail(id){
+  const r=STATE.recipes.find(r=>r.id===id);
+  if(!r) return;
+  const container=document.getElementById('items-container');
+  const ings=(r.ingredients||[]).map(i=>`
+    <div class="ingredient-row">
+      <span class="ingredient-qty">${escHtml(i.qty||'')}</span>
+      <span class="ingredient-name">${escHtml(i.name)}</span>
+    </div>`).join('');
+  const steps=(r.steps||[]).map((s,idx)=>`
+    <div class="step-row">
+      <span class="step-num">${idx+1}</span>
+      <span class="step-text">${escHtml(s)}</span>
+    </div>`).join('');
+  container.innerHTML=`
+    <div class="recipe-detail-header">
+      <div class="recipe-detail-emoji">${escHtml(r.emoji||'🍽️')}</div>
+      <div class="recipe-detail-name">${escHtml(r.name)}</div>
+      ${r.description?`<div class="recipe-detail-desc">${escHtml(r.description)}</div>`:''}
+      <div class="recipe-detail-chips">
+        ${r.cookTime?`<span class="recipe-detail-chip">⏱ ${escHtml(r.cookTime)}</span>`:''}
+        <span class="recipe-detail-chip">🧺 ${(r.ingredients||[]).length} ingredients</span>
+        <span class="recipe-detail-chip">📋 ${(r.steps||[]).length} steps</span>
+      </div>
+      ${(r.steps||[]).length?`<button class="start-cooking-btn" onclick="startFocusMode('${r.id}')">🔥 Start Cooking</button>`:''}
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="renderCookTab()">← Back</button>
+      <button class="btn btn-primary" style="flex:1;background:var(--cook-accent);" onclick="openRecipeEdit('${r.id}')">✏️ Edit Recipe</button>
+    </div>
+    ${(r.ingredients||[]).length?`<div class="recipe-section-title">Ingredients</div>${ings}`:''}
+    ${(r.steps||[]).length?`<div class="recipe-section-title">Steps</div>${steps}`:''}
+  `;
+}
+
+// ── Recipe Edit Modal ──
+let _recipeIngredients=[]; // working copy during edit
+let _recipeSteps=[];
+
+function openRecipeEdit(id){
+  STATE.editingRecipeId=id;
+  const r=id?STATE.recipes.find(r=>r.id===id):null;
+  document.getElementById('recipe-edit-title').textContent=r?'Edit Recipe':'New Recipe';
+  document.getElementById('recipe-name-input').value=r?r.name:'';
+  document.getElementById('recipe-desc-input').value=r?r.description||'':'';
+  document.getElementById('recipe-emoji-input').value=r?r.emoji||'':'';
+  document.getElementById('recipe-time-input').value=r?r.cookTime||'':'';
+  document.getElementById('btn-delete-recipe').style.display=r?'block':'none';
+  _recipeIngredients=r?(r.ingredients||[]).map(i=>({...i})):[];
+  _recipeSteps=r?[...(r.steps||[])]:[];
+  // Populate item picker
+  const sel=document.getElementById('recipe-ing-item-select');
+  sel.innerHTML=`<option value="">Pick an item…</option>`+
+    [...STATE.items].sort((a,b)=>a.name.localeCompare(b.name))
+      .map(i=>`<option value="${escHtml(i.name)}">${escHtml(i.name)}</option>`).join('');
+  renderRecipeIngredientsList();
+  renderRecipeStepsList();
+  openModal('recipe-edit-overlay');
+}
+
+function renderRecipeIngredientsList(){
+  document.getElementById('recipe-ingredients-list').innerHTML=
+    _recipeIngredients.map((ing,idx)=>`
+      <div class="ingredient-row">
+        <span class="ingredient-qty">${escHtml(ing.qty||'')}</span>
+        <span class="ingredient-name">${escHtml(ing.name)}</span>
+        <button class="ingredient-del" onclick="removeRecipeIngredient(${idx})">✕</button>
+      </div>`).join('') || '<div style="color:var(--text2);font-size:0.85rem;padding:4px 0 8px;">No ingredients yet.</div>';
+}
+
+function renderRecipeStepsList(){
+  document.getElementById('recipe-steps-list').innerHTML=
+    _recipeSteps.map((s,idx)=>`
+      <div class="step-row">
+        <span class="step-num">${idx+1}</span>
+        <span class="step-text">${escHtml(s)}</span>
+        <button class="step-del" onclick="removeRecipeStep(${idx})">✕</button>
+      </div>`).join('') || '<div style="color:var(--text2);font-size:0.85rem;padding:4px 0 8px;">No steps yet.</div>';
+}
+
+function addRecipeIngredient(){
+  const name=document.getElementById('recipe-ing-item-select').value;
+  const qty=document.getElementById('recipe-ing-qty-input').value.trim();
+  if(!name) return;
+  _recipeIngredients.push({name,qty});
+  document.getElementById('recipe-ing-qty-input').value='';
+  document.getElementById('recipe-ing-item-select').value='';
+  renderRecipeIngredientsList();
+}
+
+function removeRecipeIngredient(idx){
+  _recipeIngredients.splice(idx,1);
+  renderRecipeIngredientsList();
+}
+
+function addRecipeStep(){
+  const text=document.getElementById('recipe-step-input').value.trim();
+  if(!text) return;
+  _recipeSteps.push(text);
+  document.getElementById('recipe-step-input').value='';
+  renderRecipeStepsList();
+}
+
+function removeRecipeStep(idx){
+  _recipeSteps.splice(idx,1);
+  renderRecipeStepsList();
+}
+
+async function saveRecipe(){
+  const name=document.getElementById('recipe-name-input').value.trim();
+  if(!name){ document.getElementById('recipe-name-input').focus(); return; }
+  const editingId=STATE.editingRecipeId;
+  STATE.editingRecipeId=null;
+  closeModal('recipe-edit-overlay');
+  const recipe={
+    id: editingId||(uid()),
+    name,
+    description: document.getElementById('recipe-desc-input').value.trim(),
+    emoji: document.getElementById('recipe-emoji-input').value.trim()||'🍽️',
+    cookTime: document.getElementById('recipe-time-input').value.trim(),
+    ingredients: [..._recipeIngredients],
+    steps: [..._recipeSteps],
+    updated: Date.now(),
+  };
+  await saveRecord('recipes', recipe);
+  setMode('cook');
+}
+
+async function deleteRecipe(){
+  const id=STATE.editingRecipeId;
+  if(!id) return;
+  if(!confirm('Delete this recipe?')) return;
+  STATE.editingRecipeId=null;
+  closeModal('recipe-edit-overlay');
+  await deleteRecord('recipes', id);
+  setMode('cook');
+}
+
+// ── Focus / Cooking Mode ──
+function startFocusMode(id){
+  const r=STATE.recipes.find(r=>r.id===id);
+  if(!r||(r.steps||[]).length===0) return;
+  STATE.focusRecipeId=id;
+  STATE.focusStep=0;
+  STATE.focusGrabbed={};
+  document.getElementById('focus-recipe-name').textContent=r.emoji+' '+r.name;
+  document.getElementById('focus-ingredients-panel').classList.remove('open');
+  document.getElementById('btn-toggle-ingredients').textContent='🧺 Show Ingredients';
+  renderFocusStep();
+  // Wake Lock — keep screen on
+  if('wakeLock' in navigator){
+    navigator.wakeLock.request('screen').catch(()=>{});
+  }
+  document.getElementById('focus-overlay').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+
+function exitFocusMode(){
+  document.getElementById('focus-overlay').classList.remove('active');
+  document.body.style.overflow='';
+  STATE.focusRecipeId=null;
+}
+
+function renderFocusStep(){
+  const r=STATE.recipes.find(r=>r.id===STATE.focusRecipeId);
+  if(!r) return;
+  const steps=r.steps||[];
+  const current=STATE.focusStep;
+  const area=document.getElementById('focus-steps-area');
+
+  if(current>=steps.length){
+    // All done!
+    area.innerHTML=`<div class="focus-complete-banner">
+      <div class="big-emoji">🎉</div>
+      <h2>All done!</h2>
+      <p>${escHtml(r.name)} is ready. Enjoy!</p>
+    </div>`;
+    const btn=document.getElementById('btn-focus-next');
+    btn.textContent='🏠 Back to Recipes';
+    btn.className='focus-next-btn done';
+    return;
+  }
+
+  // Done steps collapsed at top
+  const doneHtml=steps.slice(0,current).map((s,i)=>`
+    <div class="focus-done-item">
+      <span class="done-check">✓</span>
+      <span>Step ${i+1}: ${escHtml(s.length>40?s.slice(0,40)+'…':s)}</span>
+    </div>`).join('');
+
+  // Upcoming steps (faint)
+  const upcomingHtml=steps.slice(current+1).map((s,i)=>`
+    <div class="focus-upcoming-item">
+      <span class="focus-upcoming-num">${current+i+2}</span>
+      <span>${escHtml(s)}</span>
+    </div>`).join('');
+
+  area.innerHTML=`
+    <div class="focus-done-list">${doneHtml}</div>
+    <div class="focus-current-step">
+      <div class="focus-step-label">Step ${current+1} of ${steps.length}</div>
+      <div class="focus-step-text">${escHtml(steps[current])}</div>
+    </div>
+    <div class="focus-upcoming">${upcomingHtml}</div>`;
+
+  const btn=document.getElementById('btn-focus-next');
+  btn.textContent=current===steps.length-1?'✓ Finish Cooking →':'Mark Step Done →';
+  btn.className='focus-next-btn';
+
+  // Render ingredients panel
+  const ings=r.ingredients||[];
+  document.getElementById('focus-ingredients-panel').innerHTML=
+    ings.length?ings.map((ing,idx)=>`
+      <div class="focus-ing-item ${STATE.focusGrabbed[idx]?'grabbed':''}" onclick="toggleFocusGrab(${idx})">
+        <span class="focus-ing-qty">${escHtml(ing.qty||'')}</span>
+        <span>${escHtml(ing.name)}</span>
+      </div>`).join('')
+    :'<div style="color:rgba(255,255,255,0.4);font-size:0.85rem;">No ingredients listed.</div>';
+}
+
+function advanceFocusStep(){
+  const r=STATE.recipes.find(r=>r.id===STATE.focusRecipeId);
+  if(!r) return;
+  if(STATE.focusStep>=r.steps.length){
+    exitFocusMode();
+    return;
+  }
+  STATE.focusStep++;
+  // Smooth scroll to top of steps area
+  document.getElementById('focus-steps-area').scrollTo({top:0,behavior:'smooth'});
+  renderFocusStep();
+}
+
+function toggleFocusGrab(idx){
+  STATE.focusGrabbed[idx]=!STATE.focusGrabbed[idx];
+  renderFocusStep();
+}
+
+function toggleFocusIngredients(){
+  const panel=document.getElementById('focus-ingredients-panel');
+  const btn=document.getElementById('btn-toggle-ingredients');
+  const open=panel.classList.toggle('open');
+  btn.textContent=open?'🧺 Hide Ingredients':'🧺 Show Ingredients';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // MODAL HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
 function openModal(id){
@@ -1698,20 +2129,38 @@ function bindEvents(){
 
   document.getElementById('btn-add-cat').addEventListener('click', addNewCategory);
 
+  // Cook tab
+  document.getElementById('tab-cook').addEventListener('click', () => setMode('cook'));
+  document.getElementById('btn-exit-focus').addEventListener('click', exitFocusMode);
+  document.getElementById('btn-focus-next').addEventListener('click', advanceFocusStep);
+  document.getElementById('btn-toggle-ingredients').addEventListener('click', toggleFocusIngredients);
+  document.getElementById('btn-cancel-recipe').addEventListener('click', () => closeModal('recipe-edit-overlay'));
+  document.getElementById('btn-save-recipe').addEventListener('click', saveRecipe);
+  document.getElementById('btn-delete-recipe').addEventListener('click', deleteRecipe);
+  document.getElementById('btn-add-ingredient').addEventListener('click', addRecipeIngredient);
+  document.getElementById('btn-add-step').addEventListener('click', addRecipeStep);
+  document.getElementById('recipe-edit-overlay').addEventListener('click', e => { if(e.target===document.getElementById('recipe-edit-overlay')) closeModal('recipe-edit-overlay'); });
+
   // Expose functions used in dynamically-rendered innerHTML onclick attributes
-  window.openDetail             = openDetail;
-  window.openStoreDetail        = openStoreDetail;
-  window.selectStore            = selectStore;
-  window.toggleShopCard         = toggleShopCard;
-  window.confirmDeleteShop      = confirmDeleteShop;
-  window.toggleLogItem          = toggleLogItem;
-  window.toggleFilter           = toggleFilter;
-  window.toggleShopFilter       = toggleShopFilter;
-  window.deleteCategory         = deleteCategory;
-  window.openAddModalForCategory= openAddModalForCategory;
-  window.STATE                  = STATE;
-  window.renderFilterBar        = renderFilterBar;
-  window.renderHistoryTab       = renderHistoryTab;
+  window.openDetail              = openDetail;
+  window.openStoreDetail         = openStoreDetail;
+  window.selectStore             = selectStore;
+  window.toggleShopCard          = toggleShopCard;
+  window.confirmDeleteShop       = confirmDeleteShop;
+  window.toggleLogItem           = toggleLogItem;
+  window.toggleFilter            = toggleFilter;
+  window.toggleShopFilter        = toggleShopFilter;
+  window.deleteCategory          = deleteCategory;
+  window.openAddModalForCategory = openAddModalForCategory;
+  window.openRecipeDetail        = openRecipeDetail;
+  window.openRecipeEdit          = openRecipeEdit;
+  window.startFocusMode          = startFocusMode;
+  window.toggleFocusGrab         = toggleFocusGrab;
+  window.removeRecipeIngredient  = removeRecipeIngredient;
+  window.removeRecipeStep        = removeRecipeStep;
+  window.STATE                   = STATE;
+  window.renderFilterBar         = renderFilterBar;
+  window.renderHistoryTab        = renderHistoryTab;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
