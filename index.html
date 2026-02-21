@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Our Kitchen">
+<meta name="theme-color" content="#c8521a">
 <title>🥕 Our Kitchen</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -494,6 +499,29 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 .admin-stat-label{font-size:0.85rem;color:#ccc;}
 .admin-stat-val{font-family:'Fraunces',serif;font-size:1.1rem;color:#7b8cde;font-weight:700;}
 
+/* ── PWA INSTALL BANNER ── */
+.pwa-banner{background:var(--full-light);border:1.5px solid var(--full);border-radius:var(--radius);padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;}
+.pwa-banner-text{flex:1;font-size:0.85rem;color:var(--text);}
+.pwa-banner-text strong{display:block;margin-bottom:2px;}
+.pwa-install-btn{background:var(--full);color:#fff;border:none;border-radius:50px;padding:8px 16px;font-size:0.82rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:transform 0.15s;}
+.pwa-install-btn:active{transform:scale(0.97);}
+.pwa-banner-close{background:none;border:none;cursor:pointer;color:var(--text2);font-size:1.1rem;padding:2px 4px;opacity:0.5;}
+.pwa-banner-close:hover{opacity:1;}
+/* In header */
+.pwa-header-btn{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:50px;padding:5px 10px;font-size:0.72rem;font-weight:600;cursor:pointer;white-space:nowrap;display:none;}
+.pwa-header-btn.visible{display:block;}
+
+/* ── ADMIN FILTERS ── */
+.admin-filters{background:#1e1e3f;border-radius:var(--radius);padding:14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+.admin-filter-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;}
+.admin-filter-label{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.8px;color:#7b8cde;font-weight:600;}
+.admin-filter-input{background:#16213e;border:1.5px solid #3a3a6a;border-radius:8px;color:#fff;padding:7px 10px;font-size:0.82rem;outline:none;width:100%;}
+.admin-filter-input:focus{border-color:#7b8cde;}
+.admin-filter-select{background:#16213e;border:1.5px solid #3a3a6a;border-radius:8px;color:#fff;padding:7px 10px;font-size:0.82rem;outline:none;width:100%;}
+.admin-export-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.admin-export-btn{flex:1;padding:10px;border-radius:10px;border:1.5px solid #3a3a6a;background:#1e1e3f;color:#7b8cde;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;min-width:100px;text-align:center;}
+.admin-export-btn:hover{background:#3a3a6a;color:#fff;}
+
 @media(min-width:600px){main{padding:22px 24px;}}
 
 </style>
@@ -528,6 +556,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
   <div class="header-top">
     <div class="logo">Our <span>Kitchen</span></div>
     <div class="header-right">
+      <button class="pwa-header-btn" id="btn-pwa-install" title="Add to Home Screen">📲 Install</button>
       <div class="family-badge" id="family-badge-btn">👨‍👩‍👧‍👦 ——</div>
       <button class="add-btn" id="main-add-btn">＋ Add</button>
     </div>
@@ -1086,6 +1115,7 @@ let STATE = {
   // admin
   isAdmin: false,
   adminFeedback: [],
+  adminFilter: { minStars:0, maxStars:5, feature:'all', dateFrom:'', dateTo:'', hasComment:false },
   // exchange rates cache
   rates: {},
   ratesTs: 0,
@@ -1510,7 +1540,20 @@ function categoryHeader(cat, count){
 function renderPantry(){
   renderStats();
   const container=document.getElementById('items-container');
-  if(!STATE.items.length){container.innerHTML=empty('🥕','Your kitchen is empty!','Tap "+ Add" to start tracking your pantry.');return;}
+
+  // Show install banner if not yet installed and prompt is available or iOS
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const showBanner = !_pwaInstalled && !sessionStorage.getItem('pwa-banner-dismissed') && (_pwaPrompt || isIOS);
+  const installBanner = showBanner ? `<div class="pwa-banner" id="pwa-banner">
+    <div class="pwa-banner-text">
+      <strong>📲 Add to Home Screen</strong>
+      Keep Our Kitchen in your pocket for quick access.
+    </div>
+    <button class="pwa-install-btn" onclick="document.getElementById('btn-pwa-install').click()">Install</button>
+    <button class="pwa-banner-close" onclick="sessionStorage.setItem('pwa-banner-dismissed','1');document.getElementById('pwa-banner').remove()" title="Dismiss">✕</button>
+  </div>` : '';
+
+  if(!STATE.items.length){container.innerHTML=installBanner+empty('🥕','Your kitchen is empty!','Tap "+ Add" to start tracking your pantry.');return;}
   let html='';
   for(const cat of getCatsWithItems()){
     let list=getCatItems(cat);
@@ -1523,7 +1566,7 @@ function renderPantry(){
     </div>`;
   }
   if(!html) html=empty('✅','All stocked up!','Nothing is out or low right now. Great job!');
-  container.innerHTML=html;
+  container.innerHTML=installBanner+html;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2253,7 +2296,10 @@ function renderRecipeStepsList(){
     container.innerHTML='<div style="color:var(--text2);font-size:0.85rem;padding:4px 0 8px;">No steps yet.</div>';
     return;
   }
-  const isTouchDevice = window.matchMedia('(hover:none)').matches;
+  const isTouchDevice = (() => {
+    try { return window.matchMedia('(hover:none)').matches || ('ontouchstart' in window); }
+    catch(e) { return 'ontouchstart' in window; }
+  })();
   container.innerHTML = _recipeSteps.map((s, idx) => {
     const isEditing = _editingStepIdx === idx;
     return `<div class="step-row" draggable="true" data-idx="${idx}" id="step-row-${idx}">
@@ -3059,6 +3105,24 @@ async function loadAdminData(){
   }catch(e){ STATE.adminFeedback=[]; }
 }
 
+function getFilteredFeedback(){
+  const f=STATE.adminFilter;
+  return STATE.adminFeedback.filter(item=>{
+    if(item.stars < f.minStars || item.stars > f.maxStars) return false;
+    if(f.feature !== 'all' && item.feature !== f.feature) return false;
+    if(f.hasComment && !item.comment) return false;
+    if(f.dateFrom){
+      const from=new Date(f.dateFrom).setHours(0,0,0,0);
+      if(item.ts < from) return false;
+    }
+    if(f.dateTo){
+      const to=new Date(f.dateTo).setHours(23,59,59,999);
+      if(item.ts > to) return false;
+    }
+    return true;
+  });
+}
+
 function renderAdminTab(){
   document.getElementById('stats-bar').style.display='none';
   document.getElementById('filter-bar').innerHTML='';
@@ -3070,45 +3134,133 @@ function renderAdminTab(){
       <div style="font-size:3rem;margin-bottom:12px;">📭</div>
       <div style="font-family:'Fraunces',serif;font-size:1.4rem;color:#e0e0ff;margin-bottom:8px;">No feedback yet</div>
       <div style="color:#888;font-size:0.88rem;">Feedback from users will appear here.</div>
+      <button onclick="refreshAdminData()" style="margin-top:16px;background:#1e1e3f;color:#7b8cde;border:1.5px solid #3a3a6a;border-radius:50px;padding:10px 20px;cursor:pointer;font-size:0.85rem;">↻ Refresh</button>
     </div>`;
     return;
   }
 
-  const features=['pantry','shopping','stores','history','cook','meal','overall'];
-  const featureLabels={pantry:'🏠 Pantry',shopping:'🛒 Shopping',stores:'🏪 Stores',history:'📋 History',cook:'👨‍🍳 Cook',meal:'📅 Meal Plan',overall:'⭐ Overall'};
+  const features=['all','pantry','shopping','stores','history','cook','meal','overall'];
+  const featureLabels={all:'All Features',pantry:'🏠 Pantry',shopping:'🛒 Shopping',stores:'🏪 Stores',history:'📋 History',cook:'👨‍🍳 Cook',meal:'📅 Meal Plan',overall:'⭐ Overall'};
+  const f=STATE.adminFilter;
+  const filtered=getFilteredFeedback();
 
-  // Summary stats
+  // Summary stats on filtered set
   const totalRatings=STATE.adminFeedback.length;
-  const avgStars=(STATE.adminFeedback.reduce((s,f)=>s+f.stars,0)/totalRatings).toFixed(1);
-  const withComments=STATE.adminFeedback.filter(f=>f.comment).length;
+  const filteredCount=filtered.length;
+  const avgStars=filteredCount?(filtered.reduce((s,x)=>s+x.stars,0)/filteredCount).toFixed(1):'—';
+  const withComments=filtered.filter(x=>x.comment).length;
 
-  let html=`<div class="admin-section">
-    <h3>Overview</h3>
-    <div class="admin-stat"><span class="admin-stat-label">Total ratings</span><span class="admin-stat-val">${totalRatings}</span></div>
+  // Export bar
+  const exportBar=`<div class="admin-export-bar">
+    <button class="admin-export-btn" onclick="copyAllFeedback()">📋 Copy All</button>
+    <button class="admin-export-btn" onclick="exportFeedbackCSV()">⬇ Export CSV</button>
+    <button class="admin-export-btn" onclick="refreshAdminData()">↻ Refresh</button>
+  </div>`;
+
+  // Filters
+  const filterBar=`<div class="admin-filters">
+    <div class="admin-filter-group">
+      <div class="admin-filter-label">Feature</div>
+      <select class="admin-filter-select" onchange="STATE.adminFilter.feature=this.value;renderAdminTab()">
+        ${features.map(ff=>`<option value="${ff}" ${f.feature===ff?'selected':''}>${featureLabels[ff]}</option>`).join('')}
+      </select>
+    </div>
+    <div class="admin-filter-group" style="min-width:80px;max-width:90px;">
+      <div class="admin-filter-label">Min ★</div>
+      <select class="admin-filter-select" onchange="STATE.adminFilter.minStars=+this.value;renderAdminTab()">
+        ${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${f.minStars===n?'selected':''}>${n===0?'Any':n+'+'}</option>`).join('')}
+      </select>
+    </div>
+    <div class="admin-filter-group" style="min-width:80px;max-width:90px;">
+      <div class="admin-filter-label">Max ★</div>
+      <select class="admin-filter-select" onchange="STATE.adminFilter.maxStars=+this.value;renderAdminTab()">
+        ${[5,4,3,2,1].map(n=>`<option value="${n}" ${f.maxStars===n?'selected':''}>${n}★</option>`).join('')}
+      </select>
+    </div>
+    <div class="admin-filter-group">
+      <div class="admin-filter-label">From date</div>
+      <input type="date" class="admin-filter-input" value="${f.dateFrom}" onchange="STATE.adminFilter.dateFrom=this.value;renderAdminTab()" />
+    </div>
+    <div class="admin-filter-group">
+      <div class="admin-filter-label">To date</div>
+      <input type="date" class="admin-filter-input" value="${f.dateTo}" onchange="STATE.adminFilter.dateTo=this.value;renderAdminTab()" />
+    </div>
+    <div class="admin-filter-group" style="min-width:100px;">
+      <div class="admin-filter-label">Has comment</div>
+      <select class="admin-filter-select" onchange="STATE.adminFilter.hasComment=this.value==='yes';renderAdminTab()">
+        <option value="no" ${!f.hasComment?'selected':''}>All</option>
+        <option value="yes" ${f.hasComment?'selected':''}>With comment</option>
+      </select>
+    </div>
+    ${(f.minStars>0||f.maxStars<5||f.feature!=='all'||f.dateFrom||f.dateTo||f.hasComment)?
+      `<button onclick="STATE.adminFilter={minStars:0,maxStars:5,feature:'all',dateFrom:'',dateTo:'',hasComment:false};renderAdminTab()" style="align-self:flex-end;background:#3a3a6a;color:#ccc;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:0.8rem;">✕ Clear filters</button>`:''}
+  </div>`;
+
+  // Overview
+  const overview=`<div class="admin-section">
+    <h3>Overview${filteredCount<totalRatings?` — showing ${filteredCount} of ${totalRatings}`:` — ${totalRatings} total`}</h3>
+    <div class="admin-stat"><span class="admin-stat-label">Ratings shown</span><span class="admin-stat-val">${filteredCount}</span></div>
     <div class="admin-stat"><span class="admin-stat-label">Average score</span><span class="admin-stat-val">★ ${avgStars}</span></div>
     <div class="admin-stat"><span class="admin-stat-label">With comments</span><span class="admin-stat-val">${withComments}</span></div>
   </div>`;
 
-  features.forEach(f=>{
-    const items=STATE.adminFeedback.filter(x=>x.feature===f).sort((a,b)=>b.ts-a.ts);
-    if(!items.length) return;
+  // Per-feature sections (respecting filter)
+  const activeFeaturesInFilter = f.feature==='all'
+    ? ['pantry','shopping','stores','history','cook','meal','overall']
+    : [f.feature];
+
+  const sections=activeFeaturesInFilter.map(feat=>{
+    const items=filtered.filter(x=>x.feature===feat).sort((a,b)=>b.ts-a.ts);
+    if(!items.length) return '';
     const avg=(items.reduce((s,x)=>s+x.stars,0)/items.length).toFixed(1);
-    html+=`<div class="admin-section">
-      <h3>${featureLabels[f]||f} — avg ★${avg} (${items.length} rating${items.length!==1?'s':''})</h3>
+    return `<div class="admin-section">
+      <h3>${featureLabels[feat]||feat} — avg ★${avg} (${items.length} rating${items.length!==1?'s':''})</h3>
       ${items.map(item=>`
         <div class="feedback-card">
           <div class="feedback-stars">${'★'.repeat(item.stars)}${'☆'.repeat(5-item.stars)}</div>
           ${item.comment?`<div class="feedback-comment">"${escHtml(item.comment)}"</div>`:''}
-          <div class="feedback-meta">${item.familyCode} · ${new Date(item.ts).toLocaleDateString()}</div>
+          <div class="feedback-meta">${escHtml(item.familyCode||'anon')} · ${new Date(item.ts).toLocaleDateString('en-IE')}</div>
         </div>`).join('')}
     </div>`;
+  }).join('');
+
+  container.innerHTML=exportBar+filterBar+overview+(sections||`<div style="text-align:center;padding:20px;color:#666;font-size:0.88rem;">No feedback matches your filters.</div>`);
+}
+
+function copyAllFeedback(){
+  const filtered=getFilteredFeedback().sort((a,b)=>b.ts-a.ts);
+  const featureLabels={pantry:'Pantry',shopping:'Shopping',stores:'Stores',history:'History',cook:'Cook',meal:'Meal Plan',overall:'Overall'};
+  const text=filtered.map(item=>
+    `${'★'.repeat(item.stars)}${'☆'.repeat(5-item.stars)} [${featureLabels[item.feature]||item.feature}]\n`+
+    (item.comment?`"${item.comment}"\n`:'')+
+    `${item.familyCode||'anon'} · ${new Date(item.ts).toLocaleDateString('en-IE')}`
+  ).join('\n\n');
+  navigator.clipboard.writeText(text).then(()=>showToast(`Copied ${filtered.length} feedback item${filtered.length!==1?'s':''}!`)).catch(()=>{
+    // Fallback — create a textarea
+    const ta=document.createElement('textarea');
+    ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); showToast(`Copied ${filtered.length} items!`);
   });
+}
 
-  html+=`<div style="text-align:center;margin-top:20px;">
-    <button onclick="refreshAdminData()" style="background:#1e1e3f;color:#7b8cde;border:1.5px solid #3a3a6a;border-radius:50px;padding:10px 20px;cursor:pointer;font-size:0.85rem;">↻ Refresh Data</button>
-  </div>`;
-
-  container.innerHTML=html;
+function exportFeedbackCSV(){
+  const filtered=getFilteredFeedback().sort((a,b)=>b.ts-a.ts);
+  const rows=[['Stars','Feature','Comment','Family Code','Date']];
+  filtered.forEach(item=>rows.push([
+    item.stars,
+    item.feature,
+    (item.comment||'').replace(/"/g,'""'),
+    item.familyCode||'anon',
+    new Date(item.ts).toLocaleDateString('en-IE')
+  ]));
+  const csv=rows.map(r=>r.map(cell=>`"${cell}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`our-kitchen-feedback-${todayStr()}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSV downloaded!');
 }
 
 async function refreshAdminData(){
@@ -3289,15 +3441,86 @@ function bindEvents(){
   window.setFeedbackStar         = setFeedbackStar;
   // Admin
   window.refreshAdminData        = refreshAdminData;
+  window.copyAllFeedback         = copyAllFeedback;
+  window.exportFeedbackCSV       = exportFeedbackCSV;
   window.STATE                   = STATE;
   window.renderFilterBar         = renderFilterBar;
   window.renderHistoryTab        = renderHistoryTab;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// PWA INSTALL
+// ══════════════════════════════════════════════════════════════════════════════
+let _pwaPrompt = null;
+let _pwaInstalled = false;
+
+function initPWA(){
+  // Check if already running as installed PWA
+  if(window.matchMedia('(display-mode: standalone)').matches ||
+     window.navigator.standalone === true){
+    _pwaInstalled = true;
+    return; // Already installed — don't show button
+  }
+
+  // Listen for the install prompt (Android/Chrome)
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    const btn = document.getElementById('btn-pwa-install');
+    if(btn) btn.classList.add('visible');
+  });
+
+  // Listen for successful install
+  window.addEventListener('appinstalled', () => {
+    _pwaInstalled = true;
+    _pwaPrompt = null;
+    const btn = document.getElementById('btn-pwa-install');
+    if(btn) btn.classList.remove('visible');
+    showToast('📲 Our Kitchen added to your Home Screen!');
+  });
+
+  // Wire up button
+  const btn = document.getElementById('btn-pwa-install');
+  if(btn){
+    btn.addEventListener('click', async () => {
+      if(_pwaPrompt){
+        // Chrome/Android native prompt
+        _pwaPrompt.prompt();
+        const result = await _pwaPrompt.userChoice;
+        if(result.outcome === 'accepted'){
+          _pwaPrompt = null;
+          btn.classList.remove('visible');
+        }
+      } else {
+        // iOS/Safari — no prompt API, show instructions
+        openInstallInstructions();
+      }
+    });
+  }
+
+  // On iOS Safari there's no beforeinstallprompt — detect and show button anyway
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /safari/i.test(navigator.userAgent) && !/chrome/i.test(navigator.userAgent);
+  if(isIOS && isSafari && !_pwaInstalled){
+    const btn = document.getElementById('btn-pwa-install');
+    if(btn) btn.classList.add('visible');
+  }
+}
+
+function openInstallInstructions(){
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const msg = isIOS
+    ? '📲 To add to your Home Screen:\n\n1. Tap the Share button (□↑) at the bottom of Safari\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm'
+    : '📲 To install:\n\nOpen this page in Chrome and tap the menu (⋮), then select "Add to Home Screen" or "Install App"';
+  alert(msg);
+}
+window.openInstallInstructions = openInstallInstructions;
+
+// ══════════════════════════════════════════════════════════════════════════════
 // START
 // ══════════════════════════════════════════════════════════════════════════════
 bindEvents();
+initPWA();
 init();
 </script>
 </body>
