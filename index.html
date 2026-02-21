@@ -1332,6 +1332,8 @@ async function deleteItem(){
   closeModal('detail-overlay');
   await deleteRecord('items',id);
 }
+
+function openDetail(id){
   STATE.detailItemId=id;
   const item=STATE.items.find(i=>i.id===id);
   if(!item) return;
