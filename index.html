@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Our Kitchen">
 <meta name="theme-color" content="#c8521a">
+<meta name="application-name" content="Our Kitchen">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Our%20Kitchen%22%2C%22short_name%22%3A%22Our%20Kitchen%22%2C%22description%22%3A%22Family%20pantry%20and%20meal%20planner%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23faf7f2%22%2C%22theme_color%22%3A%22%23c8521a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%2520viewBox%3D'0%200%20512%20512'%253E%253Crect%2520width%3D'512'%2520height%3D'512'%2520rx%3D'80'%2520fill%3D'%23c8521a'%2F%253E%253Ctext%2520x%3D'256'%2520y%3D'340'%2520text-anchor%3D'middle'%2520font-size%3D'300'%253E%25F0%259F%25A5%2595%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 <title>🥕 Our Kitchen</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -500,16 +502,14 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 .admin-stat-val{font-family:'Fraunces',serif;font-size:1.1rem;color:#7b8cde;font-weight:700;}
 
 /* ── PWA INSTALL BANNER ── */
-.pwa-banner{background:var(--full-light);border:1.5px solid var(--full);border-radius:var(--radius);padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;}
-.pwa-banner-text{flex:1;font-size:0.85rem;color:var(--text);}
-.pwa-banner-text strong{display:block;margin-bottom:2px;}
-.pwa-install-btn{background:var(--full);color:#fff;border:none;border-radius:50px;padding:8px 16px;font-size:0.82rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:transform 0.15s;}
-.pwa-install-btn:active{transform:scale(0.97);}
-.pwa-banner-close{background:none;border:none;cursor:pointer;color:var(--text2);font-size:1.1rem;padding:2px 4px;opacity:0.5;}
-.pwa-banner-close:hover{opacity:1;}
+.pwa-step{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.pwa-step:last-of-type{border-bottom:none;}
+.pwa-step-num{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:0.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.pwa-step span:last-child{font-size:0.88rem;line-height:1.5;color:var(--text);}
 /* In header */
-.pwa-header-btn{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:50px;padding:5px 10px;font-size:0.72rem;font-weight:600;cursor:pointer;white-space:nowrap;display:none;}
-.pwa-header-btn.visible{display:block;}
+.pwa-header-btn{background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.35);color:#fff;border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;flex-shrink:0;}
+.pwa-header-btn:hover{background:rgba(255,255,255,0.28);}
+.pwa-header-btn.installed{opacity:0.35;cursor:default;}
 
 /* ── ADMIN FILTERS ── */
 .admin-filters{background:#1e1e3f;border-radius:var(--radius);padding:14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
@@ -556,7 +556,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
   <div class="header-top">
     <div class="logo">Our <span>Kitchen</span></div>
     <div class="header-right">
-      <button class="pwa-header-btn" id="btn-pwa-install" title="Add to Home Screen">📲 Install</button>
+      <button class="pwa-header-btn" id="btn-pwa-install" title="Add to Home Screen">📲</button>
       <div class="family-badge" id="family-badge-btn">👨‍👩‍👧‍👦 ——</div>
       <button class="add-btn" id="main-add-btn">＋ Add</button>
     </div>
@@ -966,6 +966,20 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
       <button class="btn btn-secondary" id="btn-cancel-apply-template">Cancel</button>
       <button class="btn btn-primary" style="background:var(--meal-accent);" id="btn-confirm-apply-template">Apply →</button>
     </div>
+  </div>
+</div>
+
+<!-- PWA INSTALL MODAL -->
+<div class="overlay" id="pwa-install-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📲 Add to Home Screen</div>
+    <div class="modal-sub">Keep Our Kitchen in your pocket for instant access — no app store needed.</div>
+    <div id="pwa-install-steps" style="margin:16px 0;"></div>
+    <div id="pwa-native-btn-row" style="display:none;margin-bottom:12px;">
+      <button id="btn-pwa-native-install" class="btn btn-primary" style="width:100%;background:var(--full);font-size:1rem;">📲 Install Now</button>
+    </div>
+    <button class="btn btn-secondary" id="btn-close-pwa-modal" style="width:100%;">Done</button>
   </div>
 </div>
 
@@ -1560,20 +1574,7 @@ function categoryHeader(cat, count){
 function renderPantry(){
   renderStats();
   const container=document.getElementById('items-container');
-
-  // Show install banner if not yet installed and prompt is available or iOS
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const showBanner = !_pwaInstalled && !sessionStorage.getItem('pwa-banner-dismissed') && (_pwaPrompt || isIOS);
-  const installBanner = showBanner ? `<div class="pwa-banner" id="pwa-banner">
-    <div class="pwa-banner-text">
-      <strong>📲 Add to Home Screen</strong>
-      Keep Our Kitchen in your pocket for quick access.
-    </div>
-    <button class="pwa-install-btn" onclick="document.getElementById('btn-pwa-install').click()">Install</button>
-    <button class="pwa-banner-close" onclick="sessionStorage.setItem('pwa-banner-dismissed','1');document.getElementById('pwa-banner').remove()" title="Dismiss">✕</button>
-  </div>` : '';
-
-  if(!STATE.items.length){container.innerHTML=installBanner+empty('🥕','Your kitchen is empty!','Tap "+ Add" to start tracking your pantry.');return;}
+  if(!STATE.items.length){container.innerHTML=empty('🥕','Your kitchen is empty!','Tap "+ Add" to start tracking your pantry.');return;}
   let html='';
   for(const cat of getCatsWithItems()){
     let list=getCatItems(cat);
@@ -1586,7 +1587,7 @@ function renderPantry(){
     </div>`;
   }
   if(!html) html=empty('✅','All stocked up!','Nothing is out or low right now. Great job!');
-  container.innerHTML=installBanner+html;
+  container.innerHTML=html;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -3472,67 +3473,162 @@ function bindEvents(){
 // ══════════════════════════════════════════════════════════════════════════════
 // PWA INSTALL
 // ══════════════════════════════════════════════════════════════════════════════
-function initPWA(){
-  // Check if already running as installed PWA
-  if(window.matchMedia('(display-mode: standalone)').matches ||
-     window.navigator.standalone === true){
-    _pwaInstalled = true;
-    return; // Already installed — don't show button
+function detectPlatform(){
+  const ua = navigator.userAgent;
+  const isIOS     = /iphone|ipad|ipod/i.test(ua);
+  const isAndroid = /android/i.test(ua);
+  const isSamsungBrowser = /samsungbrowser/i.test(ua);
+  const isFirefox = /firefox/i.test(ua);
+  const isChrome  = /chrome/i.test(ua) && !/edg/i.test(ua);
+  const isEdge    = /edg\//i.test(ua);
+  const isSafari  = /safari/i.test(ua) && !isChrome && !isEdge && !isFirefox;
+  const isMac     = /macintosh/i.test(ua) && !isIOS;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  return { isIOS, isAndroid, isChrome, isEdge, isSafari, isFirefox, isSamsungBrowser, isMac, isStandalone };
+}
+
+function getPWAInstructions(p){
+  if(p.isStandalone){
+    return {
+      installed: true,
+      html: `<div style="text-align:center;padding:10px 0;">
+        <div style="font-size:3rem;margin-bottom:10px;">✅</div>
+        <div style="font-weight:600;margin-bottom:6px;">Already installed!</div>
+        <div style="font-size:0.85rem;color:var(--text2);">Our Kitchen is running as an installed app.</div>
+      </div>`
+    };
   }
 
-  // Listen for the install prompt (Android/Chrome)
+  if(p.isIOS && p.isSafari){
+    return { native: false, html: `
+      <div style="font-size:0.88rem;color:var(--text2);margin-bottom:14px;">Follow these steps in <strong>Safari</strong>:</div>
+      <div class="pwa-step"><span class="pwa-step-num">1</span><span>Tap the <strong>Share</strong> button <span style="font-size:1.1rem;">⎙</span> at the bottom of Safari</span></div>
+      <div class="pwa-step"><span class="pwa-step-num">2</span><span>Scroll down and tap <strong>"Add to Home Screen"</strong></span></div>
+      <div class="pwa-step"><span class="pwa-step-num">3</span><span>Tap <strong>"Add"</strong> in the top-right corner</span></div>
+      <div style="margin-top:14px;padding:10px 12px;background:var(--accent-light);border-radius:10px;font-size:0.8rem;color:var(--accent);">
+        🍎 This only works in <strong>Safari</strong>. If you're using Chrome or Firefox on iOS, open this page in Safari first.
+      </div>`
+    };
+  }
+
+  if(p.isIOS && !p.isSafari){
+    return { native: false, html: `
+      <div style="font-size:0.88rem;color:var(--text2);margin-bottom:14px;">You're on iOS but not in Safari.</div>
+      <div class="pwa-step"><span class="pwa-step-num">1</span><span>Copy this page's URL</span></div>
+      <div class="pwa-step"><span class="pwa-step-num">2</span><span>Open <strong>Safari</strong> and paste the URL</span></div>
+      <div class="pwa-step"><span class="pwa-step-num">3</span><span>Tap the <strong>Share ⎙</strong> button → <strong>"Add to Home Screen"</strong></span></div>`
+    };
+  }
+
+  if(p.isAndroid && (p.isChrome || p.isEdge || p.isSamsungBrowser)){
+    // These support beforeinstallprompt — show native button if available, otherwise manual
+    return { native: true, html: `
+      <div style="font-size:0.88rem;color:var(--text2);margin-bottom:14px;">Tap the button below, or do it manually:</div>
+      <div class="pwa-step"><span class="pwa-step-num">1</span><span>Tap the <strong>⋮ menu</strong> in the top-right of your browser</span></div>
+      <div class="pwa-step"><span class="pwa-step-num">2</span><span>Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong></span></div>
+      <div class="pwa-step"><span class="pwa-step-num">3</span><span>Tap <strong>"Add"</strong> to confirm</span></div>`
+    };
+  }
+
+  if(p.isAndroid && p.isFirefox){
+    return { native: false, html: `
+      <div style="font-size:0.88rem;color:var(--text2);margin-bottom:14px;">In <strong>Firefox for Android</strong>:</div>
+      <div class="pwa-step"><span class="pwa-step-num">1</span><span>Tap the <strong>⋮ menu</strong></span></div>
+      <div class="pwa-step"><span class="pwa-step-num">2</span><span>Tap <strong>"Install"</strong></span></div>`
+    };
+  }
+
+  if(p.isChrome || p.isEdge){
+    // Desktop Chrome/Edge
+    return { native: true, html: `
+      <div style="font-size:0.88rem;color:var(--text2);margin-bottom:14px;">In <strong>${p.isEdge ? 'Edge' : 'Chrome'}</strong> on desktop:</div>
+      <div class="pwa-step"><span class="pwa-step-num">1</span><span>Look for the <strong>install icon ⊕</strong> in the address bar (right side)</span></div>
+      <div class="pwa-step"><span class="pwa-step-num">2</span><span>Click it and select <strong>"Install"</strong></span></div>
+      <div style="margin-top:10px;font-size:0.8rem;color:var(--text2);">Or use the button below if it appears.</div>`
+    };
+  }
+
+  if(p.isMac && p.isSafari){
+    return { native: false, html: `
+      <div style="font-size:0.88rem;color:var(--text2);margin-bottom:14px;">In <strong>Safari on Mac</strong>:</div>
+      <div class="pwa-step"><span class="pwa-step-num">1</span><span>Click <strong>File</strong> in the menu bar</span></div>
+      <div class="pwa-step"><span class="pwa-step-num">2</span><span>Click <strong>"Add to Dock…"</strong></span></div>
+      <div class="pwa-step"><span class="pwa-step-num">3</span><span>Click <strong>"Add"</strong></span></div>`
+    };
+  }
+
+  // Generic fallback
+  return { native: false, html: `
+    <div style="font-size:0.88rem;color:var(--text2);margin-bottom:14px;">To add this app to your home screen:</div>
+    <div class="pwa-step"><span class="pwa-step-num">1</span><span>Open your browser's <strong>menu</strong></span></div>
+    <div class="pwa-step"><span class="pwa-step-num">2</span><span>Look for <strong>"Add to Home Screen"</strong> or <strong>"Install"</strong></span></div>`
+  };
+}
+
+function openInstallModal(){
+  const p = detectPlatform();
+  const instructions = getPWAInstructions(p);
+
+  document.getElementById('pwa-install-steps').innerHTML = instructions.html;
+
+  const nativeBtnRow = document.getElementById('pwa-native-btn-row');
+  const nativeBtn = document.getElementById('btn-pwa-native-install');
+
+  if(!instructions.installed && instructions.native && _pwaPrompt){
+    nativeBtnRow.style.display = 'block';
+    nativeBtn.onclick = async () => {
+      _pwaPrompt.prompt();
+      const result = await _pwaPrompt.userChoice;
+      if(result.outcome === 'accepted'){
+        _pwaPrompt = null;
+        closeModal('pwa-install-overlay');
+        showToast('📲 Our Kitchen added to your Home Screen!');
+      }
+    };
+  } else {
+    nativeBtnRow.style.display = 'none';
+  }
+
+  if(instructions.installed){
+    document.getElementById('btn-pwa-install').classList.add('installed');
+  }
+
+  openModal('pwa-install-overlay');
+}
+window.openInstallModal = openInstallModal;
+
+function initPWA(){
+  // Mark as installed if already running standalone
+  const p = detectPlatform();
+  if(p.isStandalone){
+    _pwaInstalled = true;
+    const btn = document.getElementById('btn-pwa-install');
+    if(btn) btn.classList.add('installed');
+  }
+
+  // Capture the native install prompt when browser offers it
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _pwaPrompt = e;
-    const btn = document.getElementById('btn-pwa-install');
-    if(btn) btn.classList.add('visible');
   });
 
-  // Listen for successful install
+  // On successful install
   window.addEventListener('appinstalled', () => {
     _pwaInstalled = true;
     _pwaPrompt = null;
     const btn = document.getElementById('btn-pwa-install');
-    if(btn) btn.classList.remove('visible');
+    if(btn) btn.classList.add('installed');
     showToast('📲 Our Kitchen added to your Home Screen!');
   });
 
-  // Wire up button
+  // Wire up the header button — always opens the modal
   const btn = document.getElementById('btn-pwa-install');
-  if(btn){
-    btn.addEventListener('click', async () => {
-      if(_pwaPrompt){
-        // Chrome/Android native prompt
-        _pwaPrompt.prompt();
-        const result = await _pwaPrompt.userChoice;
-        if(result.outcome === 'accepted'){
-          _pwaPrompt = null;
-          btn.classList.remove('visible');
-        }
-      } else {
-        // iOS/Safari — no prompt API, show instructions
-        openInstallInstructions();
-      }
-    });
-  }
+  if(btn) btn.addEventListener('click', openInstallModal);
 
-  // On iOS Safari there's no beforeinstallprompt — detect and show button anyway
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isSafari = /safari/i.test(navigator.userAgent) && !/chrome/i.test(navigator.userAgent);
-  if(isIOS && isSafari && !_pwaInstalled){
-    const btn = document.getElementById('btn-pwa-install');
-    if(btn) btn.classList.add('visible');
-  }
+  // Wire up close button
+  const closeBtn = document.getElementById('btn-close-pwa-modal');
+  if(closeBtn) closeBtn.addEventListener('click', () => closeModal('pwa-install-overlay'));
 }
-
-function openInstallInstructions(){
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const msg = isIOS
-    ? '📲 To add to your Home Screen:\n\n1. Tap the Share button (□↑) at the bottom of Safari\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm'
-    : '📲 To install:\n\nOpen this page in Chrome and tap the menu (⋮), then select "Add to Home Screen" or "Install App"';
-  alert(msg);
-}
-window.openInstallInstructions = openInstallInstructions;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // START
