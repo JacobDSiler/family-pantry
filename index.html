@@ -31,7 +31,7 @@
   --shadow: 0 2px 12px rgba(44,36,22,0.08); --radius: 14px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:120px;transition:background 0.3s;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom));transition:background 0.3s;}
 body.mode-shopping{background:var(--shop-bg);}
 body.mode-history{background:var(--hist-bg);}
 body.mode-stores{background:var(--stores-bg);}
@@ -40,7 +40,7 @@ body.mode-meal{background:var(--meal-bg);}
 body.mode-admin{background:#1a1a2e;}
 
 /* ── HEADER ── */
-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px 0;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:background 0.3s,border-color 0.3s;}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:background 0.3s,border-color 0.3s;}
 body.mode-shopping header{background:var(--shop-accent);border-bottom-color:transparent;}
 body.mode-history header{background:var(--hist-accent);border-bottom-color:transparent;}
 body.mode-stores header{background:var(--stores-accent);border-bottom-color:transparent;}
@@ -48,7 +48,7 @@ body.mode-cook header{background:var(--cook-accent);border-bottom-color:transpar
 body.mode-meal header{background:var(--meal-accent);border-bottom-color:transparent;}
 body.mode-admin header{background:#16213e;border-bottom-color:#0f3460;}
 
-.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.header-top{display:flex;align-items:center;justify-content:space-between;}
 .logo{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;color:var(--text);letter-spacing:-0.5px;transition:color 0.3s;}
 .logo span{color:var(--accent);transition:color 0.3s;}
 body.mode-shopping .logo,.mode-history .logo,.mode-stores .logo,.mode-cook .logo{color:#fff;}
@@ -61,20 +61,54 @@ body.mode-admin .logo span{color:#7b8cde;}
 
 .header-right{display:flex;align-items:center;gap:8px;}
 .family-badge{font-size:0.7rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);border-radius:50px;padding:4px 10px;color:var(--text2);cursor:pointer;transition:all 0.2s;}
-body.mode-shopping .family-badge,body.mode-history .family-badge,body.mode-stores .family-badge{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.3);color:#fff;}
+body.mode-shopping .family-badge,body.mode-history .family-badge,body.mode-stores .family-badge,body.mode-cook .family-badge,body.mode-meal .family-badge{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.3);color:#fff;}
 
-.add-btn{background:var(--accent);color:white;border:none;border-radius:50px;padding:8px 15px;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s;white-space:nowrap;}
-.add-btn:active{transform:scale(0.96);}
-body.mode-shopping .add-btn{background:rgba(255,255,255,0.22);}
-body.mode-history .add-btn,.mode-stores .add-btn{display:none;}
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:stretch;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -4px 20px rgba(44,36,22,0.1);}
+.bottom-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 4px;cursor:pointer;border:none;background:none;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:0.6rem;font-weight:600;letter-spacing:0.3px;text-transform:uppercase;transition:color 0.15s;position:relative;user-select:none;-webkit-tap-highlight-color:transparent;}
+.bottom-nav-item .nav-icon{font-size:1.35rem;line-height:1;transition:transform 0.15s;}
+.bottom-nav-item.active{color:var(--accent);}
+.bottom-nav-item.active .nav-icon{transform:scale(1.12);}
+.bottom-nav-item:active .nav-icon{transform:scale(0.9);}
 
-/* ── MODE TABS ── */
-.mode-tabs{display:flex;overflow-x:auto;scrollbar-width:none;}
-.mode-tabs::-webkit-scrollbar{display:none;}
-.mode-tab{flex:1;min-width:0;text-align:center;padding:10px 6px;font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:var(--text2);transition:all 0.2s;user-select:none;white-space:nowrap;}
-.mode-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-body.mode-shopping .mode-tab,body.mode-history .mode-tab,body.mode-stores .mode-tab{color:rgba(255,255,255,0.6);}
-body.mode-shopping .mode-tab.active,body.mode-history .mode-tab.active,body.mode-stores .mode-tab.active{color:#fff;border-bottom-color:#fff;}
+/* Active indicator dot above icon */
+.bottom-nav-item.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:3px;border-radius:0 0 3px 3px;background:var(--accent);}
+
+/* Mode-coloured active states */
+body.mode-shopping .bottom-nav-item.active{color:var(--shop-accent);}
+body.mode-shopping .bottom-nav-item.active::before{background:var(--shop-accent);}
+body.mode-history  .bottom-nav-item.active{color:var(--hist-accent);}
+body.mode-history  .bottom-nav-item.active::before{background:var(--hist-accent);}
+body.mode-stores   .bottom-nav-item.active{color:var(--stores-accent);}
+body.mode-stores   .bottom-nav-item.active::before{background:var(--stores-accent);}
+body.mode-cook     .bottom-nav-item.active{color:var(--cook-accent);}
+body.mode-cook     .bottom-nav-item.active::before{background:var(--cook-accent);}
+body.mode-meal     .bottom-nav-item.active{color:var(--meal-accent);}
+body.mode-meal     .bottom-nav-item.active::before{background:var(--meal-accent);}
+
+/* Centre Add button */
+.bottom-nav-add{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 4px;cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:0.6rem;font-weight:600;letter-spacing:0.3px;text-transform:uppercase;color:var(--text2);user-select:none;-webkit-tap-highlight-color:transparent;}
+.bottom-nav-add .nav-add-circle{width:46px;height:46px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:300;box-shadow:0 4px 14px rgba(200,82,26,0.45);transition:transform 0.15s,box-shadow 0.15s;margin-top:-14px;}
+.bottom-nav-add:active .nav-add-circle{transform:scale(0.92);box-shadow:0 2px 8px rgba(200,82,26,0.3);}
+body.mode-shopping .bottom-nav-add .nav-add-circle{background:var(--shop-accent);box-shadow:0 4px 14px rgba(74,142,96,0.4);}
+body.mode-cook     .bottom-nav-add .nav-add-circle{background:var(--cook-accent);box-shadow:0 4px 14px rgba(181,69,27,0.4);}
+body.mode-meal     .bottom-nav-add .nav-add-circle{background:var(--meal-accent);box-shadow:0 4px 14px rgba(61,82,160,0.4);}
+body.mode-history  .bottom-nav-add,.body.mode-stores .bottom-nav-add{pointer-events:none;opacity:0.35;}
+body.mode-admin    .bottom-nav-add{pointer-events:none;opacity:0.25;}
+
+/* More drawer */
+.more-drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:290;opacity:0;pointer-events:none;transition:opacity 0.22s;}
+.more-drawer-backdrop.open{opacity:1;pointer-events:all;}
+.more-drawer{position:fixed;bottom:0;left:0;right:0;z-index:295;background:var(--surface);border-radius:20px 20px 0 0;padding:0 0 calc(80px + env(safe-area-inset-bottom));box-shadow:0 -8px 32px rgba(44,36,22,0.15);transform:translateY(100%);transition:transform 0.28s cubic-bezier(0.32,0.72,0,1);}
+.more-drawer.open{transform:translateY(0);}
+.more-drawer-handle{width:36px;height:4px;border-radius:2px;background:var(--border);margin:12px auto 4px;}
+.more-drawer-title{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text2);padding:12px 20px 8px;}
+.more-drawer-item{display:flex;align-items:center;gap:16px;padding:14px 20px;cursor:pointer;transition:background 0.12s;border-bottom:1px solid var(--border);}
+.more-drawer-item:last-child{border-bottom:none;}
+.more-drawer-item:active{background:var(--surface2);}
+.more-drawer-icon{font-size:1.5rem;width:32px;text-align:center;flex-shrink:0;}
+.more-drawer-label{font-size:0.95rem;font-weight:500;color:var(--text);}
+.more-drawer-sub{font-size:0.75rem;color:var(--text2);margin-top:1px;}
 
 /* ── FILTER BAR ── */
 .filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;transition:background 0.3s,border-color 0.3s;}
@@ -477,7 +511,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 .meal-picker-search:focus{border-color:var(--meal-accent);}
 
 /* ── FEEDBACK WIDGET ── */
-.feedback-fab{position:fixed;bottom:80px;right:18px;width:44px;height:44px;border-radius:50%;background:var(--meal-accent);color:#fff;border:none;font-size:1.2rem;cursor:pointer;box-shadow:0 4px 16px rgba(61,82,160,0.4);z-index:200;display:flex;align-items:center;justify-content:center;transition:transform 0.15s;}
+.feedback-fab{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));right:18px;width:44px;height:44px;border-radius:50%;background:var(--meal-accent);color:#fff;border:none;font-size:1.2rem;cursor:pointer;box-shadow:0 4px 16px rgba(61,82,160,0.4);z-index:200;display:flex;align-items:center;justify-content:center;transition:transform 0.15s;}
 .feedback-fab:hover{transform:scale(1.1);}
 .star-row{display:flex;justify-content:center;gap:8px;margin:12px 0;}
 .star-btn{background:none;border:none;font-size:2rem;cursor:pointer;transition:transform 0.1s;line-height:1;padding:0;}
@@ -561,19 +595,56 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="header-right">
       <button class="pwa-header-btn" id="btn-pwa-install" title="Add to Home Screen">📲</button>
       <div class="family-badge" id="family-badge-btn">👨‍👩‍👧‍👦 ——</div>
-      <button class="add-btn" id="main-add-btn">＋ Add</button>
     </div>
-  </div>
-  <div class="mode-tabs">
-    <div class="mode-tab active" id="tab-pantry">🏠 Pantry</div>
-    <div class="mode-tab"        id="tab-shopping">🛒 Shopping</div>
-    <div class="mode-tab"        id="tab-stores">🏪 Stores</div>
-    <div class="mode-tab"        id="tab-history">📋 History</div>
-    <div class="mode-tab"        id="tab-cook">👨‍🍳 Cook</div>
-    <div class="mode-tab"        id="tab-meal">📅 Meal Plan</div>
   </div>
 </header>
 <div class="filter-bar" id="filter-bar"></div>
+
+<!-- ── BOTTOM NAV ── -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bottom-nav-item active" id="tab-pantry">
+    <span class="nav-icon">🏠</span>Pantry
+  </button>
+  <button class="bottom-nav-item" id="tab-shopping">
+    <span class="nav-icon">🛒</span>Shop
+  </button>
+  <button class="bottom-nav-add" id="main-add-btn">
+    <div class="nav-add-circle">＋</div>
+    <span style="margin-top:4px;">Add</span>
+  </button>
+  <button class="bottom-nav-item" id="tab-cook">
+    <span class="nav-icon">👨‍🍳</span>Cook
+  </button>
+  <button class="bottom-nav-item" id="tab-meal">
+    <span class="nav-icon">📅</span>Meals
+  </button>
+  <button class="bottom-nav-item" id="tab-more">
+    <span class="nav-icon">···</span>More
+  </button>
+</nav>
+
+<!-- ── MORE DRAWER ── -->
+<div class="more-drawer-backdrop" id="more-drawer-backdrop"></div>
+<div class="more-drawer" id="more-drawer">
+  <div class="more-drawer-handle"></div>
+  <div class="more-drawer-title">More</div>
+  <div class="more-drawer-item" id="drawer-stores">
+    <span class="more-drawer-icon">🏪</span>
+    <div><div class="more-drawer-label">Stores</div><div class="more-drawer-sub">Manage your shops & prices</div></div>
+  </div>
+  <div class="more-drawer-item" id="drawer-history">
+    <span class="more-drawer-icon">📋</span>
+    <div><div class="more-drawer-label">History</div><div class="more-drawer-sub">Past shopping trips</div></div>
+  </div>
+  <div class="more-drawer-item" id="drawer-install">
+    <span class="more-drawer-icon">📲</span>
+    <div><div class="more-drawer-label">Add to Home Screen</div><div class="more-drawer-sub">Install as an app</div></div>
+  </div>
+  <div class="more-drawer-item" id="drawer-family">
+    <span class="more-drawer-icon">👨‍👩‍👧‍👦</span>
+    <div><div class="more-drawer-label">Family Code</div><div class="more-drawer-sub">Share with your household</div></div>
+  </div>
+</div>
 
 <!-- ── MAIN ── -->
 <main>
@@ -1407,19 +1478,48 @@ function getDefaultItems(){
 // ══════════════════════════════════════════════════════════════════════════════
 function setMode(m){
   STATE.mode=m;
-  ['pantry','shopping','stores','history','cook','meal'].forEach(t=>{
+  // Update bottom nav active state — only the 4 direct tabs + more for overflow
+  ['pantry','shopping','cook','meal'].forEach(t=>{
     const el=document.getElementById('tab-'+t);
-    if(el) el.classList.toggle('active',t===m);
+    if(el) el.classList.toggle('active', t===m);
   });
+  // "More" tab lights up when in stores/history
+  const moreTab=document.getElementById('tab-more');
+  if(moreTab) moreTab.classList.toggle('active', m==='stores'||m==='history');
+
   document.body.className = m==='pantry'?'':'mode-'+m;
-  document.getElementById('main-add-btn').style.display = (m==='history'||m==='admin')?'none':'flex';
-  // Set add button label for meal tab
-  document.getElementById('main-add-btn').textContent = m==='meal'?'📅 Plan':'＋ Add';
+
+  // Add button label/visibility
+  const addBtn=document.getElementById('main-add-btn');
+  if(addBtn){
+    const addCircle=addBtn.querySelector('.nav-add-circle');
+    if(addCircle){
+      addCircle.textContent = m==='meal'?'📅':'＋';
+    }
+    // Hide add in history/stores/admin — done via CSS opacity but also disable pointer
+    addBtn.style.pointerEvents=(m==='history'||m==='stores'||m==='admin')?'none':'';
+    addBtn.style.opacity=(m==='history'||m==='stores'||m==='admin')?'0.3':'';
+  }
+
+  // Feedback FAB — hide on admin
+  const fab=document.getElementById('btn-feedback-fab');
+  if(fab) fab.style.display=(m==='admin')?'none':'flex';
+
   render();
 }
 
+function openMoreDrawer(){
+  document.getElementById('more-drawer').classList.add('open');
+  document.getElementById('more-drawer-backdrop').classList.add('open');
+}
+
+function closeMoreDrawer(){
+  document.getElementById('more-drawer').classList.remove('open');
+  document.getElementById('more-drawer-backdrop').classList.remove('open');
+}
+
 function handleMainAdd(){
-  if(STATE.mode==='stores') openAddStore();
+  if(STATE.mode==='stores')   openAddStore();
   else if(STATE.mode==='cook') openRecipeEdit(null);
   else if(STATE.mode==='meal') scrollMealToToday();
   else openAddModal();
@@ -3323,16 +3423,21 @@ function bindEvents(){
 
   // Header
   document.getElementById('family-badge-btn').addEventListener('click', () => openModal('family-overlay'));
-  document.getElementById('main-add-btn').addEventListener('click', handleMainAdd);
 
-  // Mode tabs
+  // Bottom nav tabs
   document.getElementById('tab-pantry').addEventListener('click',   () => setMode('pantry'));
   document.getElementById('tab-shopping').addEventListener('click', () => setMode('shopping'));
-  document.getElementById('tab-stores').addEventListener('click',   () => setMode('stores'));
-  document.getElementById('tab-history').addEventListener('click',  () => setMode('history'));
   document.getElementById('tab-cook').addEventListener('click',     () => setMode('cook'));
+  document.getElementById('tab-meal').addEventListener('click',     () => setMode('meal'));
+  document.getElementById('tab-more').addEventListener('click',     () => openMoreDrawer());
+  document.getElementById('main-add-btn').addEventListener('click', handleMainAdd);
 
-  // Shopping extras
+  // More drawer
+  document.getElementById('more-drawer-backdrop').addEventListener('click', closeMoreDrawer);
+  document.getElementById('drawer-stores').addEventListener('click',  () => { closeMoreDrawer(); setMode('stores'); });
+  document.getElementById('drawer-history').addEventListener('click', () => { closeMoreDrawer(); setMode('history'); });
+  document.getElementById('drawer-install').addEventListener('click', () => { closeMoreDrawer(); openInstallModal(); });
+  document.getElementById('drawer-family').addEventListener('click',  () => { closeMoreDrawer(); openModal('family-overlay'); });
   document.getElementById('store-selector-bar').addEventListener('click', () => openModal('store-pick-overlay'));
   document.getElementById('btn-log-shop').addEventListener('click', openLogShop);
 
@@ -3381,8 +3486,6 @@ function bindEvents(){
   document.getElementById('log-shop-overlay').addEventListener('click', e => { if(e.target === document.getElementById('log-shop-overlay')) closeModal('log-shop-overlay'); });
 
   document.getElementById('btn-add-cat').addEventListener('click', addNewCategory);
-
-  document.getElementById('tab-meal').addEventListener('click',    () => setMode('meal'));
 
   // Meal picker modal
   document.getElementById('btn-cancel-meal-picker').addEventListener('click', () => closeModal('meal-picker-overlay'));
@@ -3469,6 +3572,8 @@ function bindEvents(){
   window.copyAllFeedback         = copyAllFeedback;
   window.exportFeedbackCSV       = exportFeedbackCSV;
   window.STATE                   = STATE;
+  window.openMoreDrawer          = openMoreDrawer;
+  window.closeMoreDrawer         = closeMoreDrawer;
   window.renderFilterBar         = renderFilterBar;
   window.renderHistoryTab        = renderHistoryTab;
 }
