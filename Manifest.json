@@ -1,0 +1,25 @@
+{
+  "name": "Our Kitchen",
+  "short_name": "Our Kitchen",
+  "description": "Family pantry tracker, meal planner & recipe book",
+  "start_url": "./pantry-tracker.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#faf7f2",
+  "theme_color": "#c8521a",
+  "categories": ["food", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
