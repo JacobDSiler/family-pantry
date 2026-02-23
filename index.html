@@ -110,6 +110,24 @@ body.mode-admin    .bottom-nav-add{pointer-events:none;opacity:0.25;}
 .more-drawer-label{font-size:0.95rem;font-weight:500;color:var(--text);}
 .more-drawer-sub{font-size:0.75rem;color:var(--text2);margin-top:1px;}
 
+/* ── SAVED FAMILIES ── */
+.saved-families-list{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
+.saved-family-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:2px solid var(--border);background:var(--surface2);cursor:pointer;transition:all 0.15s;position:relative;}
+.saved-family-card.active{border-color:var(--accent);background:var(--accent-light);}
+.saved-family-card:active{transform:scale(0.98);}
+.saved-family-avatar{width:40px;height:40px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.saved-family-card.active .saved-family-avatar{background:var(--accent-light);}
+.saved-family-info{flex:1;min-width:0;}
+.saved-family-nickname{font-size:0.92rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.saved-family-code{font-size:0.72rem;color:var(--text2);font-family:'Fraunces',serif;letter-spacing:1px;margin-top:1px;}
+.saved-family-active-badge{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);margin-top:2px;}
+.saved-family-actions{display:flex;gap:6px;flex-shrink:0;}
+.saved-family-edit-btn{background:none;border:none;font-size:0.9rem;cursor:pointer;padding:4px;color:var(--text2);opacity:0.6;}
+.saved-family-edit-btn:hover{opacity:1;}
+.saved-family-remove-btn{background:none;border:none;font-size:0.9rem;cursor:pointer;padding:4px;color:var(--out);opacity:0.5;}
+.saved-family-remove-btn:hover{opacity:1;}
+.nickname-edit-input{font-size:0.88rem;font-weight:600;border:none;border-bottom:2px solid var(--accent);background:transparent;color:var(--text);outline:none;width:100%;padding:2px 0;}
+
 /* ── FILTER BAR ── */
 .filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;transition:background 0.3s,border-color 0.3s;}
 .filter-bar::-webkit-scrollbar{display:none;}
@@ -247,7 +265,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 /* ── OVERLAY / MODAL ── */
 .overlay{position:fixed;inset:0;background:rgba(44,36,22,0.45);z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s;}
 .overlay.open{opacity:1;pointer-events:all;}
-.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:600px;transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);max-height:92vh;overflow-y:auto;}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px calc(72px + env(safe-area-inset-bottom));width:100%;max-width:600px;transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);max-height:92vh;overflow-y:auto;}
 .overlay.open .modal{transform:translateY(0);}
 .modal-handle{width:40px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 20px;}
 .modal-title{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;margin-bottom:4px;color:var(--text);}
@@ -743,29 +761,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">Family Settings</div>
-    <div class="form-group">
-      <label class="form-label">Your Family Code</label>
-      <div style="display:flex;gap:8px;">
-        <input class="form-input" id="family-code-display" readonly style="font-family:'Fraunces',serif;font-size:1.2rem;font-weight:700;letter-spacing:3px;color:var(--accent);" />
-        <button class="new-cat-btn" id="btn-copy-code">Copy</button>
-      </div>
-      <div style="font-size:0.78rem;color:var(--text2);margin-top:6px;">Share this with family members so they can join your kitchen.</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Switch to a Different Family</label>
-      <div class="join-row">
-        <input class="form-input" id="switch-code-input" placeholder="Enter family code" />
-        <button class="new-cat-btn" id="btn-switch-family" style="background:var(--shop-accent);">Join</button>
-      </div>
-    </div>
-    <hr class="divider">
-    <div class="form-group">
-      <label class="form-label">Currency</label>
-      <select class="form-select" id="settings-currency"></select>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-secondary" id="btn-close-family">Done</button>
-    </div>
+    <div id="family-modal-body"></div>
   </div>
 </div>
 
@@ -1125,6 +1121,32 @@ const SETTINGS_KEY = 'kitchen-settings-v3';
 function loadSettings(){ try{ return JSON.parse(localStorage.getItem(SETTINGS_KEY)); }catch{ return null; } }
 function saveSettings(data){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(data)); }catch(e){} }
 
+// Add or update a family in the saved list, persist immediately
+function upsertSavedFamily(code, nickname){
+  if(!code || code === 'ADMIN-1337') return;
+  const existing = STATE.savedFamilies.find(f => f.code === code);
+  if(existing){
+    existing.lastUsed = Date.now();
+    if(nickname !== undefined) existing.nickname = nickname;
+  } else {
+    STATE.savedFamilies.push({ code, nickname: nickname || code, lastUsed: Date.now() });
+  }
+  persistSettings();
+}
+
+function removeSavedFamily(code){
+  STATE.savedFamilies = STATE.savedFamilies.filter(f => f.code !== code);
+  persistSettings();
+}
+
+function persistSettings(){
+  saveSettings({
+    familyCode: STATE.familyCode,
+    currency: STATE.currency,
+    savedFamilies: STATE.savedFamilies,
+  });
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS & CURRENCIES
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1208,6 +1230,8 @@ let STATE = {
   isAdmin: false,
   adminFeedback: [],
   adminFilter: { minStars:0, maxStars:5, feature:'all', dateFrom:'', dateTo:'', hasComment:false },
+  // saved families
+  savedFamilies: [], // [{code, nickname, lastUsed}]
   // exchange rates cache
   rates: {},
   ratesTs: 0,
@@ -1275,13 +1299,12 @@ function generateFamilyCode(){
 async function init(){
   populateCurrencySelects();
 
-  // Load persisted settings (family code, currency)
   const settings = await loadSettings();
   if(settings && settings.familyCode){
     STATE.familyCode = settings.familyCode;
-    STATE.currency   = settings.currency||'USD';
+    STATE.currency   = settings.currency||'EUR';
+    STATE.savedFamilies = settings.savedFamilies || [];
 
-    // Admin session persisted
     if(STATE.familyCode === 'ADMIN-1337'){
       STATE.isAdmin = true;
       hideOnboarding();
@@ -1291,14 +1314,14 @@ async function init(){
       return;
     }
 
+    // Ensure current family is in saved list
+    upsertSavedFamily(STATE.familyCode);
     await loadAllData();
     hideOnboarding();
   } else {
-    // Show onboarding
     const code = generateFamilyCode();
     STATE.familyCode = code;
     document.getElementById('onboard-code').textContent = code;
-    // Try to detect location currency
     detectLocationCurrency();
     document.getElementById('onboard-overlay').style.display='flex';
   }
@@ -1397,7 +1420,8 @@ async function loadAllData(){
 
 async function finishOnboard(){
   STATE.currency = document.getElementById('onboard-currency').value;
-  saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
+  upsertSavedFamily(STATE.familyCode);
+  persistSettings();
   await loadAllData();
   hideOnboarding();
 }
@@ -1408,7 +1432,7 @@ async function joinFamily(){
   if(code === 'ADMIN-1337'){
     STATE.isAdmin = true;
     STATE.familyCode = 'ADMIN-1337';
-    saveSettings({familyCode:'ADMIN-1337', currency:STATE.currency});
+    persistSettings();
     hideOnboarding();
     await loadAdminData();
     setMode('admin');
@@ -1417,7 +1441,8 @@ async function joinFamily(){
   }
   STATE.familyCode = code;
   STATE.currency = document.getElementById('onboard-currency').value;
-  saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
+  upsertSavedFamily(code);
+  persistSettings();
   await loadAllData();
   hideOnboarding();
 }
@@ -1428,9 +1453,143 @@ async function switchFamily(){
   detachListeners();
   STATE.familyCode = code;
   STATE.items = []; STATE.stores = []; STATE.shopLogs = [];
-  saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
+  upsertSavedFamily(code);
+  persistSettings();
   await loadAllData();
   closeModal('family-overlay');
+  renderFamilyModal();
+}
+
+async function quickSwitchFamily(code){
+  if(code === STATE.familyCode) return;
+  detachListeners();
+  STATE.familyCode = code;
+  STATE.items = []; STATE.stores = []; STATE.shopLogs = [];
+  upsertSavedFamily(code);
+  persistSettings();
+  await loadAllData();
+  closeModal('family-overlay');
+  renderFamilyModal();
+  showToast('Switched to ' + (STATE.savedFamilies.find(f=>f.code===code)||{}).nickname || code);
+}
+
+function renderFamilyModal(){
+  const families = STATE.savedFamilies.slice().sort((a,b) => b.lastUsed - a.lastUsed);
+  const activeCode = STATE.familyCode;
+
+  const familyCards = families.length ? `
+    <div class="form-group">
+      <label class="form-label">Your Kitchens</label>
+      <div class="saved-families-list">
+        ${families.map(f => {
+          const isActive = f.code === activeCode;
+          const emoji = isActive ? '🏠' : '👨‍👩‍👧‍👦';
+          return `<div class="saved-family-card ${isActive?'active':''}" onclick="${isActive?'':'quickSwitchFamily(\''+f.code+'\')'}">
+            <div class="saved-family-avatar">${emoji}</div>
+            <div class="saved-family-info">
+              <div class="saved-family-nickname" id="fn-label-${f.code}">${escHtml(f.nickname)}</div>
+              <div class="saved-family-code">${escHtml(f.code)}</div>
+              ${isActive ? '<div class="saved-family-active-badge">● Active</div>' : ''}
+            </div>
+            <div class="saved-family-actions" onclick="event.stopPropagation()">
+              <button class="saved-family-edit-btn" onclick="startNicknameEdit('${f.code}')" title="Rename">✏️</button>
+              ${!isActive ? `<button class="saved-family-remove-btn" onclick="confirmRemoveFamily('${f.code}')" title="Remove">✕</button>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  const copyRow = `
+    <div class="form-group">
+      <label class="form-label">Share Your Code</label>
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" id="family-code-display" readonly value="${escHtml(activeCode)}"
+          style="font-family:'Fraunces',serif;font-size:1.1rem;font-weight:700;letter-spacing:2px;color:var(--accent);" />
+        <button class="new-cat-btn" id="btn-copy-code" onclick="copyFamilyCode()">Copy</button>
+      </div>
+      <div style="font-size:0.78rem;color:var(--text2);margin-top:6px;">Share this with family members so they can join your kitchen.</div>
+    </div>`;
+
+  const joinRow = `
+    <div class="form-group">
+      <label class="form-label">Add Another Kitchen</label>
+      <div class="join-row">
+        <input class="form-input" id="switch-code-input" placeholder="Enter family code" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
+        <button class="new-cat-btn" id="btn-switch-family" style="background:var(--shop-accent);" onclick="switchFamily()">Join</button>
+      </div>
+    </div>`;
+
+  const currencyRow = `
+    <hr class="divider">
+    <div class="form-group">
+      <label class="form-label">Currency</label>
+      <select class="form-select" id="settings-currency" onchange="updateCurrency(this.value)"></select>
+    </div>`;
+
+  const doneRow = `
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="btn-close-family" onclick="closeModal('family-overlay')">Done</button>
+    </div>`;
+
+  document.getElementById('family-modal-body').innerHTML =
+    familyCards + copyRow + joinRow + currencyRow + doneRow;
+
+  // Re-populate currency select
+  populateCurrencySelects();
+}
+
+function startNicknameEdit(code){
+  const f = STATE.savedFamilies.find(f => f.code === code);
+  if(!f) return;
+  const label = document.getElementById('fn-label-'+code);
+  if(!label) return;
+  const currentName = f.nickname;
+  label.innerHTML = `<input class="nickname-edit-input" id="nn-input-${code}"
+    value="${escHtml(currentName)}"
+    onblur="saveNickname('${code}')"
+    onkeydown="if(event.key==='Enter'){event.preventDefault();saveNickname('${code}');}if(event.key==='Escape'){cancelNicknameEdit('${code}','${escHtml(currentName)}')}" />`;
+  const inp = document.getElementById('nn-input-'+code);
+  if(inp){ inp.focus(); inp.select(); }
+}
+
+function saveNickname(code){
+  const inp = document.getElementById('nn-input-'+code);
+  if(!inp) return;
+  const val = inp.value.trim() || code;
+  upsertSavedFamily(code, val);
+  renderFamilyModal();
+}
+
+function cancelNicknameEdit(code, original){
+  const label = document.getElementById('fn-label-'+code);
+  if(label) label.textContent = original;
+}
+
+function confirmRemoveFamily(code){
+  const f = STATE.savedFamilies.find(f => f.code === code);
+  const name = f ? f.nickname : code;
+  if(!confirm(`Remove "${name}" from your saved kitchens?\n\nThis only removes it from this device — the kitchen data is not deleted.`)) return;
+  removeSavedFamily(code);
+  renderFamilyModal();
+  showToast('Removed from saved kitchens');
+}
+
+function copyFamilyCode(){
+  navigator.clipboard.writeText(STATE.familyCode)
+    .then(() => showToast('Family code copied!'))
+    .catch(() => alert('Family code: ' + STATE.familyCode));
+}
+
+function updateFamilyBadge(){
+  const badge = document.getElementById('family-badge-btn');
+  if(badge){
+    const f = STATE.savedFamilies.find(f => f.code === STATE.familyCode);
+    const label = f && f.nickname !== f.code ? f.nickname : STATE.familyCode;
+    badge.textContent = '👨‍👩‍👧‍👦 ' + (label||'——');
+  }
+  const codeDisplay = document.getElementById('family-code-display');
+  if(codeDisplay) codeDisplay.value = STATE.familyCode||'';
 }
 
 function hideOnboarding(){
@@ -1438,20 +1597,9 @@ function hideOnboarding(){
   updateFamilyBadge();
 }
 
-function updateFamilyBadge(){
-  const badge = document.getElementById('family-badge-btn');
-  if(badge) badge.textContent = '👨‍👩‍👧‍👦 ' + (STATE.familyCode||'—');
-  const codeDisplay = document.getElementById('family-code-display');
-  if(codeDisplay) codeDisplay.value = STATE.familyCode||'';
-}
-
-function copyFamilyCode(){
-  navigator.clipboard.writeText(STATE.familyCode).then(()=>alert('Family code copied!'));
-}
-
 async function updateCurrency(val){
   STATE.currency = val;
-  saveSettings({familyCode:STATE.familyCode, currency:STATE.currency});
+  persistSettings();
   document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
   render();
 }
@@ -3422,7 +3570,7 @@ function bindEvents(){
   document.getElementById('join-code-input').addEventListener('input', e => e.target.value = e.target.value.toUpperCase());
 
   // Header
-  document.getElementById('family-badge-btn').addEventListener('click', () => openModal('family-overlay'));
+  document.getElementById('family-badge-btn').addEventListener('click', () => { renderFamilyModal(); openModal('family-overlay'); });
 
   // Bottom nav tabs
   document.getElementById('tab-pantry').addEventListener('click',   () => setMode('pantry'));
@@ -3437,7 +3585,7 @@ function bindEvents(){
   document.getElementById('drawer-stores').addEventListener('click',  () => { closeMoreDrawer(); setMode('stores'); });
   document.getElementById('drawer-history').addEventListener('click', () => { closeMoreDrawer(); setMode('history'); });
   document.getElementById('drawer-install').addEventListener('click', () => { closeMoreDrawer(); openInstallModal(); });
-  document.getElementById('drawer-family').addEventListener('click',  () => { closeMoreDrawer(); openModal('family-overlay'); });
+  document.getElementById('drawer-family').addEventListener('click',  () => { closeMoreDrawer(); renderFamilyModal(); openModal('family-overlay'); });
   document.getElementById('store-selector-bar').addEventListener('click', () => openModal('store-pick-overlay'));
   document.getElementById('btn-log-shop').addEventListener('click', openLogShop);
 
@@ -3457,12 +3605,7 @@ function bindEvents(){
   document.getElementById('btn-delete-item').addEventListener('click', deleteItem);
   document.getElementById('detail-overlay').addEventListener('click', e => { if(e.target === document.getElementById('detail-overlay')) closeModal('detail-overlay'); });
 
-  // Family modal
-  document.getElementById('btn-copy-code').addEventListener('click', copyFamilyCode);
-  document.getElementById('btn-switch-family').addEventListener('click', switchFamily);
-  document.getElementById('switch-code-input').addEventListener('input', e => e.target.value = e.target.value.toUpperCase());
-  document.getElementById('btn-close-family').addEventListener('click', () => closeModal('family-overlay'));
-  document.getElementById('settings-currency').addEventListener('change', e => updateCurrency(e.target.value));
+  // Family modal — backdrop dismiss only; buttons are rendered dynamically via renderFamilyModal()
   document.getElementById('family-overlay').addEventListener('click', e => { if(e.target === document.getElementById('family-overlay')) closeModal('family-overlay'); });
 
   // Store picker modal
@@ -3572,6 +3715,14 @@ function bindEvents(){
   window.copyAllFeedback         = copyAllFeedback;
   window.exportFeedbackCSV       = exportFeedbackCSV;
   window.STATE                   = STATE;
+  window.quickSwitchFamily       = quickSwitchFamily;
+  window.startNicknameEdit       = startNicknameEdit;
+  window.saveNickname            = saveNickname;
+  window.cancelNicknameEdit      = cancelNicknameEdit;
+  window.confirmRemoveFamily     = confirmRemoveFamily;
+  window.renderFamilyModal       = renderFamilyModal;
+  window.copyFamilyCode          = copyFamilyCode;
+  window.switchFamily            = switchFamily;
   window.openMoreDrawer          = openMoreDrawer;
   window.closeMoreDrawer         = closeMoreDrawer;
   window.renderFilterBar         = renderFilterBar;
