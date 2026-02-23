@@ -3596,7 +3596,6 @@ function bindEvents(){
   document.querySelectorAll('.status-option').forEach(el =>
     el.addEventListener('click', () => selectStatus(el.dataset.val))
   );
-  document.getElementById('add-overlay').addEventListener('click', e => { if(e.target === document.getElementById('add-overlay')) closeModal('add-overlay'); });
 
   // Item detail modal
   document.getElementById('action-out').addEventListener('click',  () => updateStatus('out'));
@@ -3604,21 +3603,17 @@ function bindEvents(){
   document.getElementById('action-full').addEventListener('click', () => updateStatus('full'));
   document.getElementById('btn-edit-item').addEventListener('click',   openEditFromDetail);
   document.getElementById('btn-delete-item').addEventListener('click', deleteItem);
-  document.getElementById('detail-overlay').addEventListener('click', e => { if(e.target === document.getElementById('detail-overlay')) closeModal('detail-overlay'); });
 
-  // Family modal — backdrop dismiss only; buttons are rendered dynamically via renderFamilyModal()
-  document.getElementById('family-overlay').addEventListener('click', e => { if(e.target === document.getElementById('family-overlay')) closeModal('family-overlay'); });
+  // Family modal — buttons rendered dynamically via renderFamilyModal()
 
   // Store picker modal
   document.getElementById('btn-cancel-store-pick').addEventListener('click', () => closeModal('store-pick-overlay'));
   document.getElementById('btn-add-store-from-pick').addEventListener('click', () => { closeModal('store-pick-overlay'); openModal('add-store-overlay'); });
-  document.getElementById('store-pick-overlay').addEventListener('click', e => { if(e.target === document.getElementById('store-pick-overlay')) closeModal('store-pick-overlay'); });
 
   // Add store modal
   document.getElementById('btn-cancel-store').addEventListener('click', () => closeModal('add-store-overlay'));
   document.getElementById('btn-save-store').addEventListener('click', saveStore);
   document.getElementById('btn-delete-store').addEventListener('click', deleteStore);
-  document.getElementById('add-store-overlay').addEventListener('click', e => { if(e.target === document.getElementById('add-store-overlay')) closeModal('add-store-overlay'); });
 
   // Store search
   document.getElementById('store-search-input').addEventListener('input', e => renderStorePickList(e.target.value));
@@ -3627,7 +3622,6 @@ function bindEvents(){
   document.getElementById('btn-cancel-log').addEventListener('click', () => closeModal('log-shop-overlay'));
   document.getElementById('btn-save-log').addEventListener('click', saveShopLog);
   document.getElementById('log-total-override').addEventListener('input', recalcLogTotal);
-  document.getElementById('log-shop-overlay').addEventListener('click', e => { if(e.target === document.getElementById('log-shop-overlay')) closeModal('log-shop-overlay'); });
 
   document.getElementById('btn-add-cat').addEventListener('click', addNewCategory);
 
@@ -3670,6 +3664,30 @@ function bindEvents(){
   document.getElementById('btn-add-step').addEventListener('click', addRecipeStep);
   document.getElementById('recipe-step-input').addEventListener('keydown', e => { if(e.key==='Enter' && e.ctrlKey){ e.preventDefault(); addRecipeStep(); }});
   // NOTE: No backdrop-click-to-close on recipe modal — too easy to lose work
+  // NOTE: No backdrop-click-to-close on template-edit-overlay — same reason
+
+  // ── Unified backdrop-click-to-close for all other overlays ──────────────────
+  // Any tap on the dark backdrop (i.e. the overlay element itself, not the modal
+  // inside it) dismisses the sheet. recipe-edit and template-edit are excluded
+  // because they hold unsaved work that would be lost silently.
+  [
+    'add-overlay',
+    'detail-overlay',
+    'family-overlay',
+    'store-pick-overlay',
+    'add-store-overlay',
+    'log-shop-overlay',
+    'meal-picker-overlay',
+    'apply-template-overlay',
+    'feedback-overlay',
+    'pwa-install-overlay',
+    'shop-detail-overlay',
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('click', e => {
+      if(e.target === el) closeModal(id);
+    });
+  });
 
   // Expose functions used in dynamically-rendered innerHTML onclick attributes
   window.openDetail              = openDetail;
