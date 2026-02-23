@@ -1350,8 +1350,9 @@ function detectLocationCurrency(){
 async function loadAllData(){
   detachListeners();
 
-  // Load settings UI
-  document.getElementById('settings-currency').value = STATE.currency;
+  // Load settings UI — settings-currency is rendered dynamically in renderFamilyModal so guard it
+  const currencyEl = document.getElementById('settings-currency');
+  if(currencyEl) currencyEl.value = STATE.currency;
   document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
 
   // Check if family exists and fix any broken numeric-keyed data from array seeding
