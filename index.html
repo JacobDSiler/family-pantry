@@ -128,6 +128,19 @@ body.mode-admin    .bottom-nav-add{pointer-events:none;opacity:0.25;}
 .saved-family-remove-btn:hover{opacity:1;}
 .nickname-edit-input{font-size:0.88rem;font-weight:600;border:none;border-bottom:2px solid var(--accent);background:transparent;color:var(--text);outline:none;width:100%;padding:2px 0;}
 
+/* ── MEAL QUICK-ADD ── */
+.mqa-date-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px;}
+.mqa-date-nav{background:var(--meal-light);border:1.5px solid var(--meal-accent);color:var(--meal-accent);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:1rem;font-weight:600;}
+.mqa-date-label{font-family:'Fraunces',serif;font-size:1rem;font-weight:700;color:var(--text);text-align:center;flex:1;}
+.mqa-slot{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-radius:12px;background:var(--surface2);border:1.5px solid var(--border);margin-bottom:8px;cursor:pointer;transition:all 0.15s;}
+.mqa-slot:active{transform:scale(0.98);}
+.mqa-slot-label{font-size:0.95rem;font-weight:500;color:var(--text);}
+.mqa-slot-count{font-size:0.75rem;color:var(--text2);background:var(--border);border-radius:50px;padding:2px 8px;}
+
+/* ── ADMIN PIN ── */
+.admin-change-pin-btn{background:#1e1e3f;color:#7b8cde;border:1.5px solid #3a3a6a;border-radius:50px;padding:9px 20px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:background 0.15s;}
+.admin-change-pin-btn:hover{background:#2a2a5a;}
+
 /* ── FILTER BAR ── */
 .filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;transition:background 0.3s,border-color 0.3s;}
 .filter-bar::-webkit-scrollbar{display:none;}
@@ -737,6 +750,68 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
   </div>
 </div>
 
+<!-- ADMIN PIN MODAL -->
+<div class="overlay" id="admin-pin-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔐 Admin Access</div>
+    <div class="modal-sub">Enter the admin PIN to continue.</div>
+    <div class="form-group" style="margin-top:16px;">
+      <label class="form-label">PIN</label>
+      <input class="form-input" id="admin-pin-input" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="Enter PIN" autocomplete="off"
+        style="font-size:1.4rem;letter-spacing:6px;text-align:center;"
+        onkeydown="if(event.key==='Enter') verifyAdminPin()" />
+      <div id="admin-pin-error" style="color:var(--out);font-size:0.8rem;margin-top:6px;display:none;">Incorrect PIN. Try again.</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('admin-pin-overlay')">Cancel</button>
+      <button class="btn btn-primary" onclick="verifyAdminPin()" style="background:#3d52a0;">Unlock →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE ADMIN PIN MODAL -->
+<div class="overlay" id="change-pin-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔑 Change Admin PIN</div>
+    <div class="modal-sub">Choose a new PIN for admin access. Applies to all devices.</div>
+    <div class="form-group" style="margin-top:16px;">
+      <label class="form-label">Current PIN</label>
+      <input class="form-input" id="change-pin-current" type="password" inputmode="numeric" placeholder="Current PIN"
+        style="font-size:1.2rem;letter-spacing:4px;text-align:center;" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">New PIN</label>
+      <input class="form-input" id="change-pin-new" type="password" inputmode="numeric" placeholder="New PIN (min 4 digits)"
+        style="font-size:1.2rem;letter-spacing:4px;text-align:center;" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm New PIN</label>
+      <input class="form-input" id="change-pin-confirm" type="password" inputmode="numeric" placeholder="Confirm new PIN"
+        style="font-size:1.2rem;letter-spacing:4px;text-align:center;" />
+    </div>
+    <div id="change-pin-error" style="color:var(--out);font-size:0.8rem;margin-top:4px;display:none;"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('change-pin-overlay')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewPin()" style="background:#3d52a0;">Save PIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEAL QUICK-ADD MODAL -->
+<div class="overlay" id="meal-quickadd-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📅 Add to Meal Plan</div>
+    <div class="modal-sub" id="meal-quickadd-sub">Choose a date and slot</div>
+    <div id="meal-quickadd-body" style="margin-top:4px;"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('meal-quickadd-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ITEM DETAIL -->
 <div class="overlay" id="detail-overlay">
   <div class="modal">
@@ -1294,8 +1369,110 @@ function generateFamilyCode(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// INIT
+// ADMIN PIN SYSTEM
 // ══════════════════════════════════════════════════════════════════════════════
+
+// SHA-256 hash using Web Crypto API — PIN is never stored plaintext
+async function hashPin(pin){
+  const enc = new TextEncoder().encode(String(pin));
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// Load the admin PIN hash from Firebase (global path, not under a family)
+async function loadAdminPinHash(){
+  try{
+    const snap = await get(ref(db, 'admin/pin'));
+    return snap.exists() ? snap.val() : null;
+  }catch(e){ return null; }
+}
+
+// Save a new PIN hash to Firebase
+async function saveAdminPinHash(hash){
+  try{ await set(ref(db, 'admin/pin'), hash); }catch(e){ console.error('Failed to save PIN', e); }
+}
+
+// Called when user enters code ADMIN-1337 — show PIN prompt
+function promptAdminPin(){
+  const input = document.getElementById('admin-pin-input');
+  const err   = document.getElementById('admin-pin-error');
+  if(input) input.value = '';
+  if(err)   err.style.display = 'none';
+  openModal('admin-pin-overlay');
+  setTimeout(() => { if(input) input.focus(); }, 300);
+}
+
+async function verifyAdminPin(){
+  const input = document.getElementById('admin-pin-input');
+  const err   = document.getElementById('admin-pin-error');
+  const entered = (input ? input.value.trim() : '');
+  if(!entered){ if(err) err.style.display='block'; return; }
+
+  // Load stored hash — if none exists yet, default PIN is '1337'
+  let storedHash = await loadAdminPinHash();
+  if(!storedHash){
+    // First time: initialise with default PIN
+    storedHash = await hashPin('1337');
+    await saveAdminPinHash(storedHash);
+  }
+
+  const enteredHash = await hashPin(entered);
+  if(enteredHash !== storedHash){
+    if(err){ err.textContent='Incorrect PIN. Try again.'; err.style.display='block'; }
+    if(input){ input.value=''; input.focus(); }
+    return;
+  }
+
+  // PIN correct — proceed to admin mode
+  closeModal('admin-pin-overlay');
+  STATE.isAdmin = true;
+  STATE.familyCode = 'ADMIN-1337';
+  persistSettings();
+  hideOnboarding();
+  await loadAdminData();
+  setMode('admin');
+  updateFamilyBadge();
+}
+
+// Opens the Change PIN modal from within admin dashboard
+function openChangePinModal(){
+  ['change-pin-current','change-pin-new','change-pin-confirm'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  const err = document.getElementById('change-pin-error');
+  if(err) err.style.display = 'none';
+  openModal('change-pin-overlay');
+  setTimeout(() => {
+    const el = document.getElementById('change-pin-current');
+    if(el) el.focus();
+  }, 300);
+}
+
+async function saveNewPin(){
+  const current  = (document.getElementById('change-pin-current')?.value  || '').trim();
+  const newPin   = (document.getElementById('change-pin-new')?.value      || '').trim();
+  const confirm  = (document.getElementById('change-pin-confirm')?.value  || '').trim();
+  const err      = document.getElementById('change-pin-error');
+
+  const showErr = msg => { if(err){ err.textContent=msg; err.style.display='block'; } };
+
+  if(!current || !newPin || !confirm){ showErr('Please fill in all fields.'); return; }
+  if(newPin.length < 4)              { showErr('New PIN must be at least 4 digits.'); return; }
+  if(newPin !== confirm)             { showErr('New PINs do not match.'); return; }
+
+  // Verify current PIN
+  let storedHash = await loadAdminPinHash();
+  if(!storedHash) storedHash = await hashPin('1337');
+  const currentHash = await hashPin(current);
+  if(currentHash !== storedHash){ showErr('Current PIN is incorrect.'); return; }
+
+  // Save new PIN
+  const newHash = await hashPin(newPin);
+  await saveAdminPinHash(newHash);
+  closeModal('change-pin-overlay');
+  showToast('✅ Admin PIN updated successfully');
+}
 async function init(){
   populateCurrencySelects();
 
@@ -1431,13 +1608,9 @@ async function joinFamily(){
   const code = document.getElementById('join-code-input').value.trim().toUpperCase();
   if(!code||code.length<4){ alert('Please enter a valid family code.'); return; }
   if(code === 'ADMIN-1337'){
-    STATE.isAdmin = true;
-    STATE.familyCode = 'ADMIN-1337';
-    persistSettings();
-    hideOnboarding();
-    await loadAdminData();
-    setMode('admin');
-    updateFamilyBadge();
+    // Close onboarding first, then prompt for PIN
+    closeModal('family-overlay');
+    promptAdminPin();
     return;
   }
   STATE.familyCode = code;
@@ -1452,6 +1625,11 @@ async function switchFamily(){
   const code = document.getElementById('switch-code-input').value.trim().toUpperCase();
   if(!code||code.length<4){ alert('Please enter a valid family code.'); return; }
   if(code === STATE.familyCode){ closeModal('family-overlay'); return; }
+  if(code === 'ADMIN-1337'){
+    closeModal('family-overlay');
+    promptAdminPin();
+    return;
+  }
   detachListeners();
   STATE.familyCode = code;
   STATE.isAdmin = false;
@@ -1658,7 +1836,7 @@ function setMode(m){
   if(addBtn){
     const addCircle=addBtn.querySelector('.nav-add-circle');
     if(addCircle){
-      addCircle.textContent = m==='meal'?'📅':'＋';
+      addCircle.textContent = '＋';
     }
     // Hide add in history/stores/admin — done via CSS opacity but also disable pointer
     addBtn.style.pointerEvents=(m==='history'||m==='stores'||m==='admin')?'none':'';
@@ -1683,10 +1861,69 @@ function closeMoreDrawer(){
 }
 
 function handleMainAdd(){
-  if(STATE.mode==='stores')   openAddStore();
-  else if(STATE.mode==='cook') openRecipeEdit(null);
-  else if(STATE.mode==='meal') scrollMealToToday();
-  else openAddModal();
+  if(STATE.mode==='stores')        openAddStore();
+  else if(STATE.mode==='cook')     openRecipeEdit(null);
+  else if(STATE.mode==='meal')     openMealQuickAdd();
+  else                             openAddModal();
+}
+
+// ── MEAL QUICK-ADD ────────────────────────────────────────────────────────────
+let _mqaDate = null; // currently selected date in the quick-add modal
+
+function openMealQuickAdd(){
+  _mqaDate = STATE.selectedMealDate || todayStr();
+  renderMealQuickAddBody();
+  openModal('meal-quickadd-overlay');
+}
+
+function renderMealQuickAddBody(){
+  const ds   = _mqaDate;
+  const d    = new Date(ds+'T12:00:00');
+  const today = todayStr();
+  const isToday = ds === today;
+  const dateLabel = isToday
+    ? 'Today — ' + d.toLocaleDateString('en-IE',{weekday:'short',month:'short',day:'numeric'})
+    : d.toLocaleDateString('en-IE',{weekday:'long',month:'short',day:'numeric'});
+
+  const sub = document.getElementById('meal-quickadd-sub');
+  if(sub) sub.textContent = 'Pick a slot to add to:';
+
+  const prevDs = dateStr(addDays(d,-1));
+  const nextDs = dateStr(addDays(d, 1));
+
+  const day = getMealDay(ds);
+
+  const slots = MEAL_SLOTS.map(slot => {
+    const count = (day[slot]||[]).length;
+    return `<div class="mqa-slot" onclick="pickMealQuickAddSlot('${ds}','${slot}')">
+      <span class="mqa-slot-label">${MEAL_SLOT_LABELS[slot]}</span>
+      <span class="mqa-slot-count">${count > 0 ? count+' item'+(count!==1?'s':'') : 'empty'}</span>
+    </div>`;
+  }).join('');
+
+  const body = document.getElementById('meal-quickadd-body');
+  if(body) body.innerHTML = `
+    <div class="mqa-date-row">
+      <button class="mqa-date-nav" onclick="shiftMqaDate(-1)">‹</button>
+      <div class="mqa-date-label">${dateLabel}${isToday?' <span style="font-size:0.6rem;background:var(--meal-accent);color:#fff;border-radius:50px;padding:2px 7px;font-weight:700;vertical-align:middle;">Today</span>':''}</div>
+      <button class="mqa-date-nav" onclick="shiftMqaDate(1)">›</button>
+    </div>
+    ${slots}`;
+}
+
+function shiftMqaDate(delta){
+  const d = new Date(_mqaDate+'T12:00:00');
+  _mqaDate = dateStr(addDays(d, delta));
+  renderMealQuickAddBody();
+}
+
+function pickMealQuickAddSlot(ds, slot){
+  closeModal('meal-quickadd-overlay');
+  // Switch to day view for that date so the user sees what they added
+  STATE.selectedMealDate = ds;
+  STATE.mealView = 'day';
+  // Open the meal picker for that slot
+  openMealPicker(ds, slot);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -3443,6 +3680,7 @@ function renderAdminTab(){
     <button class="admin-export-btn" onclick="copyAllFeedback()">📋 Copy All</button>
     <button class="admin-export-btn" onclick="exportFeedbackCSV()">⬇ Export CSV</button>
     <button class="admin-export-btn" onclick="refreshAdminData()">↻ Refresh</button>
+    <button class="admin-change-pin-btn" onclick="openChangePinModal()">🔑 Change PIN</button>
   </div>`;
 
   // Filters
@@ -3693,10 +3931,13 @@ function bindEvents(){
     'add-store-overlay',
     'log-shop-overlay',
     'meal-picker-overlay',
+    'meal-quickadd-overlay',
     'apply-template-overlay',
     'feedback-overlay',
     'pwa-install-overlay',
     'shop-detail-overlay',
+    'admin-pin-overlay',
+    'change-pin-overlay',
   ].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.addEventListener('click', e => {
@@ -3749,7 +3990,13 @@ function bindEvents(){
   window.copyAllFeedback         = copyAllFeedback;
   window.exportFeedbackCSV       = exportFeedbackCSV;
   window.STATE                   = STATE;
-  window.quickSwitchFamily       = quickSwitchFamily;
+  window.verifyAdminPin          = verifyAdminPin;
+  window.promptAdminPin          = promptAdminPin;
+  window.openChangePinModal      = openChangePinModal;
+  window.saveNewPin              = saveNewPin;
+  window.openMealQuickAdd        = openMealQuickAdd;
+  window.shiftMqaDate            = shiftMqaDate;
+  window.pickMealQuickAddSlot    = pickMealQuickAddSlot;
   window.startNicknameEdit       = startNicknameEdit;
   window.saveNickname            = saveNickname;
   window.cancelNicknameEdit      = cancelNicknameEdit;
