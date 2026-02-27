@@ -27,7 +27,8 @@
   --hist-bg: #f5f0fa; --hist-accent: #5b3d8f;
   --stores-bg: #f0f4fa; --stores-accent: #1e4d8c;
   --cook-bg: #fdf6ee; --cook-accent: #b5451b; --cook-light: #fff3ec;
-  --meal-bg: #f0f4ff; --meal-accent: #3d52a0; --meal-light: #e8eeff;
+  --stored-bg: #f2f8f5; --stored-accent: #2a7d5a; --stored-light: #e4f5ed;
+  --stored-warn: #d4860a; --stored-expired: #c8521a;
   --shadow: 0 2px 12px rgba(44,36,22,0.08); --radius: 14px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -85,6 +86,14 @@ body.mode-cook     .bottom-nav-item.active{color:var(--cook-accent);}
 body.mode-cook     .bottom-nav-item.active::before{background:var(--cook-accent);}
 body.mode-meal     .bottom-nav-item.active{color:var(--meal-accent);}
 body.mode-meal     .bottom-nav-item.active::before{background:var(--meal-accent);}
+body.mode-stored   .bottom-nav-item.active{color:var(--stored-accent);}
+body.mode-stored   .bottom-nav-item.active::before{background:var(--stored-accent);}
+body.mode-stored{background:var(--stored-bg);}
+body.mode-stored header{background:var(--stored-accent);border-bottom-color:transparent;}
+body.mode-stored .logo{color:#fff;}
+body.mode-stored .logo span{color:var(--stored-light);}
+body.mode-stored .family-badge{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.3);color:#fff;}
+body.mode-stored .bottom-nav-add .nav-add-circle{background:var(--stored-accent);box-shadow:0 4px 14px rgba(42,125,90,0.4);}
 
 /* Centre Add button */
 .bottom-nav-add{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 4px;cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:0.6rem;font-weight:600;letter-spacing:0.3px;text-transform:uppercase;color:var(--text2);user-select:none;-webkit-tap-highlight-color:transparent;}
@@ -128,7 +137,36 @@ body.mode-admin    .bottom-nav-add{pointer-events:none;opacity:0.25;}
 .saved-family-remove-btn:hover{opacity:1;}
 .nickname-edit-input{font-size:0.88rem;font-weight:600;border:none;border-bottom:2px solid var(--accent);background:transparent;color:var(--text);outline:none;width:100%;padding:2px 0;}
 
-/* ── MEAL QUICK-ADD ── */
+/* ── STORED FOOD ── */
+.stored-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;transition:transform 0.15s;position:relative;}
+.stored-card:active{transform:scale(0.985);}
+.stored-card.warn{border-left:4px solid var(--stored-warn);}
+.stored-card.expired{border-left:4px solid var(--stored-expired);opacity:0.8;}
+.stored-card.fresh{border-left:4px solid var(--stored-accent);}
+.stored-card.gone{border-left:4px solid var(--border);opacity:0.5;}
+.stored-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.stored-card.fresh .stored-icon{background:var(--stored-light);}
+.stored-card.warn .stored-icon{background:#fef6e4;}
+.stored-card.expired .stored-icon{background:var(--accent-light);}
+.stored-card.gone .stored-icon{background:var(--surface2);}
+.stored-info{flex:1;min-width:0;}
+.stored-name{font-size:0.95rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stored-meta{font-size:0.75rem;color:var(--text2);margin-top:2px;}
+.stored-badge{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;border-radius:50px;padding:3px 9px;white-space:nowrap;flex-shrink:0;align-self:flex-start;}
+.stored-badge.fresh{background:var(--stored-light);color:var(--stored-accent);}
+.stored-badge.warn{background:#fef6e4;color:var(--stored-warn);}
+.stored-badge.expired{background:var(--accent-light);color:var(--stored-expired);}
+.stored-badge.gone{background:var(--surface2);color:var(--text2);}
+.stored-amount-row{display:flex;gap:6px;margin-top:8px;}
+.stored-amount-btn{flex:1;padding:7px 4px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface2);font-size:0.78rem;font-weight:600;cursor:pointer;color:var(--text);transition:all 0.15s;text-align:center;}
+.stored-amount-btn.active{background:var(--stored-accent);border-color:var(--stored-accent);color:#fff;}
+.stored-amount-btn.active.warn{background:var(--stored-warn);border-color:var(--stored-warn);}
+.stored-amount-btn.active.gone{background:var(--border);border-color:var(--border);color:var(--text2);}
+.stored-expiry-badge{display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:600;border-radius:50px;padding:2px 8px;margin-top:4px;}
+.stored-expiry-badge.fresh{background:var(--stored-light);color:var(--stored-accent);}
+.stored-expiry-badge.warn{background:#fef6e4;color:var(--stored-warn);}
+.stored-expiry-badge.expired{background:var(--accent-light);color:var(--stored-expired);}
+.stored-section-header{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin:16px 0 8px;padding:0 2px;}
 .mqa-date-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px;}
 .mqa-date-nav{background:var(--meal-light);border:1.5px solid var(--meal-accent);color:var(--meal-accent);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:1rem;font-weight:600;}
 .mqa-date-label{font-family:'Fraunces',serif;font-size:1rem;font-weight:700;color:var(--text);text-align:center;flex:1;}
@@ -195,17 +233,22 @@ body.mode-shopping .shop-banner{display:flex;}
 
 /* ── CATEGORY SECTION ── */
 .category-section{margin-bottom:26px;}
-.category-header{display:flex;align-items:center;margin-bottom:10px;}
+.category-header{display:flex;align-items:center;margin-bottom:10px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;}
+.category-header:active{opacity:0.75;}
 .category-name{font-family:'Fraunces',serif;font-size:1.02rem;font-weight:500;color:var(--text2);letter-spacing:0.3px;display:flex;align-items:center;gap:8px;transition:color 0.3s;flex:1;}
 body.mode-shopping .category-name{color:var(--shop-accent);}
 .category-count{font-family:'DM Sans',sans-serif;font-size:0.72rem;background:var(--surface2);border-radius:50px;padding:2px 8px;color:var(--text2);transition:all 0.3s;}
 body.mode-shopping .category-count{background:#c5dece;color:var(--shop-accent);}
+.cat-collapse-chevron{font-size:0.75rem;color:var(--text2);opacity:0.5;transition:transform 0.2s;margin-left:2px;flex-shrink:0;}
+.category-section.collapsed .cat-collapse-chevron{transform:rotate(-90deg);}
 .cat-add-btn{width:26px;height:26px;border-radius:50%;background:var(--surface2);border:1.5px solid var(--border);color:var(--text2);font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity 0.15s,background 0.15s,transform 0.15s;flex-shrink:0;user-select:none;}
 .category-section:hover .cat-add-btn{opacity:1;}
 .cat-add-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.1);}
 body.mode-shopping .cat-add-btn:hover{background:var(--shop-accent);border-color:var(--shop-accent);color:#fff;}
 /* Always visible on touch devices */
 @media(hover:none){.cat-add-btn{opacity:1;}}
+.cat-items-wrapper{overflow:hidden;transition:max-height 0.25s ease, opacity 0.2s ease;}
+.category-section.collapsed .cat-items-wrapper{max-height:0!important;opacity:0;pointer-events:none;}
 
 /* ── ITEM CARD ── */
 .item-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:opacity 0.2s,transform 0.15s;position:relative;}
@@ -659,6 +702,10 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 <div class="more-drawer" id="more-drawer">
   <div class="more-drawer-handle"></div>
   <div class="more-drawer-title">More</div>
+  <div class="more-drawer-item" id="drawer-stored">
+    <span class="more-drawer-icon">🫙</span>
+    <div><div class="more-drawer-label">Stored Food</div><div class="more-drawer-sub">Leftovers & meal-prepped food</div></div>
+  </div>
   <div class="more-drawer-item" id="drawer-stores">
     <span class="more-drawer-icon">🏪</span>
     <div><div class="more-drawer-label">Stores</div><div class="more-drawer-sub">Manage your shops & prices</div></div>
@@ -750,6 +797,19 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
   </div>
 </div>
 
+<!-- SWITCH FAMILY CONFIRM -->
+<div class="overlay" id="switch-confirm-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Switch Kitchen?</div>
+    <div class="modal-sub" id="switch-confirm-sub">Switch to this family?</div>
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn btn-secondary" onclick="closeModal('switch-confirm-overlay')">Cancel</button>
+      <button class="btn btn-primary" id="switch-confirm-yes" onclick="executePendingSwitch()">Switch →</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADMIN PIN MODAL -->
 <div class="overlay" id="admin-pin-overlay">
   <div class="modal">
@@ -764,7 +824,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
       <div id="admin-pin-error" style="color:var(--out);font-size:0.8rem;margin-top:6px;display:none;">Incorrect PIN. Try again.</div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeModal('admin-pin-overlay')">Cancel</button>
+      <button class="btn btn-secondary" onclick="cancelAdminPin()">Cancel</button>
       <button class="btn btn-primary" onclick="verifyAdminPin()" style="background:#3d52a0;">Unlock →</button>
     </div>
   </div>
@@ -795,6 +855,72 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeModal('change-pin-overlay')">Cancel</button>
       <button class="btn btn-primary" onclick="saveNewPin()" style="background:#3d52a0;">Save PIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- STORED FOOD ADD/EDIT MODAL -->
+<div class="overlay" id="add-stored-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="add-stored-title">Add Stored Food</div>
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input class="form-input" id="stored-name-input" placeholder="e.g. Leftover Lasagne" />
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 80px;">
+        <label class="form-label">Emoji</label>
+        <input class="form-input" id="stored-emoji-input" placeholder="🍲" maxlength="2" style="text-align:center;font-size:1.3rem;" />
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Amount</label>
+        <div class="status-picker" id="stored-amount-picker">
+          <div class="status-option selected" data-val="plenty"><span class="so-emoji">✅</span>Plenty</div>
+          <div class="status-option" data-val="some"><span class="so-emoji">⚠️</span>Some</div>
+          <div class="status-option" data-val="last"><span class="so-emoji">🚫</span>Last bit</div>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Shelf Life</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="status-picker" id="stored-shelf-picker" style="flex:1;">
+          <div class="status-option selected" data-val="3">3 days</div>
+          <div class="status-option" data-val="5">5 days</div>
+          <div class="status-option" data-val="7">1 week</div>
+          <div class="status-option" data-val="custom">Custom</div>
+        </div>
+      </div>
+      <div id="stored-custom-shelf" style="display:none;margin-top:8px;display:flex;gap:8px;align-items:center;">
+        <input class="form-input" id="stored-custom-days" type="number" min="0" step="1" placeholder="Days" style="width:90px;" oninput="updateStoredExpiryPreview()" />
+        <span style="color:var(--text2);font-size:0.85rem;">days, or pick a date:</span>
+        <input class="form-input" id="stored-custom-date" type="date" style="flex:1;" oninput="updateStoredExpiryPreview()" />
+      </div>
+      <div id="stored-expiry-preview" style="font-size:0.8rem;color:var(--stored-accent);margin-top:6px;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+      <input class="form-input" id="stored-notes-input" placeholder="e.g. In the blue container, fridge shelf 2" />
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('add-stored-overlay')">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-stored" onclick="saveStoredFood()" style="background:var(--stored-accent);">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- STORED FOOD DETAIL MODAL -->
+<div class="overlay" id="stored-detail-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="stored-detail-title"></div>
+    <div class="modal-sub" id="stored-detail-sub"></div>
+    <div id="stored-detail-body"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('stored-detail-overlay')">Close</button>
+      <button class="btn btn-secondary" id="btn-edit-stored">✏️ Edit</button>
+      <button class="btn btn-danger" id="btn-delete-stored">🗑 Delete</button>
     </div>
   </div>
 </div>
@@ -1307,7 +1433,8 @@ let STATE = {
   adminFilter: { minStars:0, maxStars:5, feature:'all', dateFrom:'', dateTo:'', hasComment:false },
   // saved families
   savedFamilies: [], // [{code, nickname, lastUsed}]
-  // exchange rates cache
+  storedFood: [],       // [{id,name,emoji,amount,addedAt,expiresAt,shelfDays,notes}]
+  collapsedCats: new Set(),
   rates: {},
   ratesTs: 0,
 };
@@ -1393,11 +1520,26 @@ async function saveAdminPinHash(hash){
 }
 
 // Called when user enters code ADMIN-1337 — show PIN prompt
+function cancelAdminPin(){
+  closeModal('admin-pin-overlay');
+  // If no family code is set yet, restore the onboarding screen
+  if(!STATE.familyCode || STATE.familyCode === 'ADMIN-1337'){
+    const onboard = document.getElementById('onboard-overlay');
+    const settings = loadSettings();
+    if(!settings || !settings.familyCode || settings.familyCode === 'ADMIN-1337'){
+      if(onboard) onboard.style.display = 'flex';
+    }
+  }
+}
+
 function promptAdminPin(){
   const input = document.getElementById('admin-pin-input');
   const err   = document.getElementById('admin-pin-error');
   if(input) input.value = '';
   if(err)   err.style.display = 'none';
+  // Hide onboarding screen if it's open (z-index 500 would block the PIN modal)
+  const onboard = document.getElementById('onboard-overlay');
+  if(onboard) onboard.style.display = 'none';
   openModal('admin-pin-overlay');
   setTimeout(() => { if(input) input.focus(); }, 300);
 }
@@ -1573,6 +1715,8 @@ async function loadAllData(){
   });
   subscribe('cats', val => {
     STATE.categories = val ? (Array.isArray(val) ? val : Object.values(val)) : DEFAULT_CATS;
+    // Re-render immediately so items don't fall into "Other" while cats load
+    render();
   });
   subscribe('stores', val => {
     STATE.stores = val ? Object.entries(val).map(([k,s]) => s.id ? s : {...s,id:k}) : [];
@@ -1594,6 +1738,10 @@ async function loadAllData(){
     STATE.mealTemplates = val ? Object.entries(val).map(([k,t])=>t.id?t:{...t,id:k}) : [];
     if(STATE.mode === 'meal' && STATE.mealView==='templates') renderMealTab();
   });
+  subscribe('storedFood', val => {
+    STATE.storedFood = val ? Object.entries(val).map(([k,s])=>s.id?s:{...s,id:k}) : [];
+    if(STATE.mode === 'stored') renderStoredFoodTab();
+  });
 }
 
 async function finishOnboard(){
@@ -1608,7 +1756,8 @@ async function joinFamily(){
   const code = document.getElementById('join-code-input').value.trim().toUpperCase();
   if(!code||code.length<4){ alert('Please enter a valid family code.'); return; }
   if(code === 'ADMIN-1337'){
-    // Close onboarding first, then prompt for PIN
+    // Hide the onboarding overlay (z-index 500) so PIN modal (z-index 200) is visible
+    document.getElementById('onboard-overlay').style.display='none';
     closeModal('family-overlay');
     promptAdminPin();
     return;
@@ -1630,33 +1779,38 @@ async function switchFamily(){
     promptAdminPin();
     return;
   }
-  detachListeners();
-  STATE.familyCode = code;
-  STATE.isAdmin = false;
-  STATE.items = []; STATE.stores = []; STATE.shopLogs = [];
-  STATE.recipes = []; STATE.mealPlan = {}; STATE.mealTemplates = [];
-  upsertSavedFamily(code);
-  persistSettings();
-  await loadAllData();
-  updateFamilyBadge();
-  render();
-  closeModal('family-overlay');
-  showToast('Switched to ' + (STATE.savedFamilies.find(f=>f.code===code)||{}).nickname || code);
+  _pendingSwitchCode = code;
+  await executePendingSwitch();
 }
 
-async function quickSwitchFamily(code){
-  if(code === STATE.familyCode) return;
+let _pendingSwitchCode = null;
+
+function confirmSwitchFamily(code){
+  _pendingSwitchCode = code;
+  const f = STATE.savedFamilies.find(f=>f.code===code);
+  const name = f ? f.nickname : code;
+  const sub = document.getElementById('switch-confirm-sub');
+  if(sub) sub.textContent = `Switch to "${name}"? Your current pantry data will be replaced.`;
+  closeModal('family-overlay');
+  openModal('switch-confirm-overlay');
+}
+
+async function executePendingSwitch(){
+  closeModal('switch-confirm-overlay');
+  if(!_pendingSwitchCode){ return; }
+  const code = _pendingSwitchCode;
+  _pendingSwitchCode = null;
   detachListeners();
   STATE.familyCode = code;
   STATE.isAdmin = false;
   STATE.items = []; STATE.stores = []; STATE.shopLogs = [];
   STATE.recipes = []; STATE.mealPlan = {}; STATE.mealTemplates = [];
+  STATE.storedFood = [];
   upsertSavedFamily(code);
   persistSettings();
   await loadAllData();
   updateFamilyBadge();
-  render();
-  closeModal('family-overlay');
+  setMode('pantry');
   const f = STATE.savedFamilies.find(f=>f.code===code);
   showToast('Switched to ' + (f ? f.nickname : code));
 }
@@ -1678,7 +1832,7 @@ function renderFamilyModal(){
         ${families.map(f => {
           const isActive = f.code === activeCode;
           const emoji = isActive ? '🏠' : '👨‍👩‍👧‍👦';
-          return `<div class="saved-family-card ${isActive?'active':''}" onclick="${isActive?'':'quickSwitchFamily(\''+f.code+'\')'}">
+          return `<div class="saved-family-card ${isActive?'active':''}" onclick="${isActive?'':'confirmSwitchFamily(\''+f.code+'\')'}">
             <div class="saved-family-avatar">${emoji}</div>
             <div class="saved-family-info">
               <div class="saved-family-nickname" id="fn-label-${f.code}">${escHtml(f.nickname)}</div>
@@ -1825,22 +1979,20 @@ function setMode(m){
     const el=document.getElementById('tab-'+t);
     if(el) el.classList.toggle('active', t===m);
   });
-  // "More" tab lights up when in stores/history
+  // "More" tab lights up when in stores/history/stored
   const moreTab=document.getElementById('tab-more');
-  if(moreTab) moreTab.classList.toggle('active', m==='stores'||m==='history');
+  if(moreTab) moreTab.classList.toggle('active', m==='stores'||m==='history'||m==='stored');
 
   document.body.className = m==='pantry'?'':'mode-'+m;
 
-  // Add button label/visibility
+  // Add button
   const addBtn=document.getElementById('main-add-btn');
   if(addBtn){
     const addCircle=addBtn.querySelector('.nav-add-circle');
-    if(addCircle){
-      addCircle.textContent = '＋';
-    }
-    // Hide add in history/stores/admin — done via CSS opacity but also disable pointer
-    addBtn.style.pointerEvents=(m==='history'||m==='stores'||m==='admin')?'none':'';
-    addBtn.style.opacity=(m==='history'||m==='stores'||m==='admin')?'0.3':'';
+    if(addCircle) addCircle.textContent = '＋';
+    const disabled = m==='history'||m==='stores'||m==='admin';
+    addBtn.style.pointerEvents = disabled?'none':'';
+    addBtn.style.opacity = disabled?'0.3':'';
   }
 
   // Feedback FAB — hide on admin
@@ -1864,6 +2016,7 @@ function handleMainAdd(){
   if(STATE.mode==='stores')        openAddStore();
   else if(STATE.mode==='cook')     openRecipeEdit(null);
   else if(STATE.mode==='meal')     openMealQuickAdd();
+  else if(STATE.mode==='stored')   openAddStoredFood(null);
   else                             openAddModal();
 }
 
@@ -1976,7 +2129,6 @@ function toggleShopFilter(f){
 // ══════════════════════════════════════════════════════════════════════════════
 function render(){
   renderFilterBar();
-  // Show/hide shopping extras
   document.getElementById('store-selector-bar').style.display = STATE.mode==='shopping'?'flex':'none';
   document.getElementById('est-total-bar').style.display = STATE.mode==='shopping'?'flex':'none';
 
@@ -1986,6 +2138,7 @@ function render(){
   else if(STATE.mode==='history')  renderHistoryTab();
   else if(STATE.mode==='cook')     renderCookTab();
   else if(STATE.mode==='meal')     renderMealTab();
+  else if(STATE.mode==='stored')   renderStoredFoodTab();
   else if(STATE.mode==='admin')    renderAdminTab();
 }
 
@@ -2070,10 +2223,30 @@ function itemCard(item, showPrice){
 }
 
 function categoryHeader(cat, count){
-  return `<div class="category-header">
+  const isCollapsed = STATE.collapsedCats.has(cat);
+  return `<div class="category-header" onclick="toggleCatCollapse('${escHtml(cat)}')">
     <div class="category-name">${catEmoji(cat)} ${escHtml(cat)}<span class="category-count">${count}</span></div>
-    <div class="cat-add-btn" onclick="openAddModalForCategory('${escHtml(cat)}')" title="Add item to ${escHtml(cat)}">＋</div>
+    <span class="cat-collapse-chevron">▼</span>
+    <div class="cat-add-btn" onclick="event.stopPropagation();openAddModalForCategory('${escHtml(cat)}')" title="Add item to ${escHtml(cat)}">＋</div>
   </div>`;
+}
+
+function toggleCatCollapse(cat){
+  if(STATE.collapsedCats.has(cat)) STATE.collapsedCats.delete(cat);
+  else STATE.collapsedCats.add(cat);
+  // Toggle CSS class directly — no full re-render needed
+  document.querySelectorAll('.category-section[data-cat]').forEach(el => {
+    if(el.dataset.cat === cat){
+      const collapsed = STATE.collapsedCats.has(cat);
+      el.classList.toggle('collapsed', collapsed);
+      // Set explicit max-height for smooth animation
+      const wrapper = el.querySelector('.cat-items-wrapper');
+      if(wrapper){
+        if(collapsed){ wrapper.style.maxHeight = wrapper.scrollHeight+'px'; requestAnimationFrame(()=>{ wrapper.style.maxHeight='0'; }); }
+        else { wrapper.style.maxHeight='0'; requestAnimationFrame(()=>{ wrapper.style.maxHeight = wrapper.scrollHeight+200+'px'; setTimeout(()=>{ wrapper.style.maxHeight=''; },300); }); }
+      }
+    }
+  });
 }
 function renderPantry(){
   renderStats();
@@ -2085,9 +2258,12 @@ function renderPantry(){
     if(STATE.pf.needs) list=list.filter(i=>i.status!=='full');
     list=sorted(list,STATE.pf.recent,STATE.pf.alpha);
     if(!list.length) continue;
-    html+=`<div class="category-section">
+    const isCollapsed = STATE.collapsedCats.has(cat);
+    html+=`<div class="category-section${isCollapsed?' collapsed':''}" data-cat="${escHtml(cat)}">
       ${categoryHeader(cat, list.length)}
-      ${list.map(i=>itemCard(i,false)).join('')}
+      <div class="cat-items-wrapper" style="${isCollapsed?'max-height:0;opacity:0;':''}">
+        ${list.map(i=>itemCard(i,false)).join('')}
+      </div>
     </div>`;
   }
   if(!html) html=empty('✅','All stocked up!','Nothing is out or low right now. Great job!');
@@ -2144,13 +2320,16 @@ function renderShoppingTab(){
     if(!visibleNeeds.length&&!visibleStocked.length&&!visibleSkipped.length) continue;
     const displayCount=visibleNeeds.length+(showSkipped?skippedNeeds.length:0)+(STATE.sf.needsOnly?0:stockItems.length);
 
-    html+=`<div class="category-section">
+    const isCollapsed = STATE.collapsedCats.has(cat);
+    html+=`<div class="category-section${isCollapsed?' collapsed':''}" data-cat="${escHtml(cat)}">
       ${categoryHeader(cat, displayCount)}
-      ${visibleNeeds.map(i=>shoppingItemCard(i)).join('')}
-      ${visibleNeeds.length&&visibleStocked.length?'<div class="section-divider"><span>Already Stocked</span></div>':''}
-      ${visibleStocked.map(i=>itemCard(i,false)).join('')}
-      ${visibleSkipped.length?'<div class="section-divider"><span style="color:var(--text2);">Skipped this trip</span></div>':''}
-      ${visibleSkipped.map(i=>shoppingItemCard(i,true)).join('')}
+      <div class="cat-items-wrapper" style="${isCollapsed?'max-height:0;opacity:0;':''}">
+        ${visibleNeeds.map(i=>shoppingItemCard(i)).join('')}
+        ${visibleNeeds.length&&visibleStocked.length?'<div class="section-divider"><span>Already Stocked</span></div>':''}
+        ${visibleStocked.map(i=>itemCard(i,false)).join('')}
+        ${visibleSkipped.length?'<div class="section-divider"><span style="color:var(--text2);">Skipped this trip</span></div>':''}
+        ${visibleSkipped.map(i=>shoppingItemCard(i,true)).join('')}
+      </div>
     </div>`;
   }
   if(!html) html=STATE.sf.needsOnly?empty('🎉','Nothing needed!','Everything is stocked!'):empty('🛒','Nothing tracked yet!','Tap "+ Add" to start.');
@@ -3621,6 +3800,266 @@ function showToast(msg){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// STORED FOOD TAB
+// ══════════════════════════════════════════════════════════════════════════════
+
+function storedFoodStatus(item){
+  const now = Date.now();
+  const exp = item.expiresAt;
+  if(!exp) return 'fresh';
+  const hoursLeft = (exp - now) / 3600000;
+  if(hoursLeft < 0)   return 'expired';
+  if(hoursLeft < 24)  return 'warn';   // expires within 24h
+  if(hoursLeft < 72)  return 'warn';   // expires within 3 days
+  return 'fresh';
+}
+
+function storedFoodExpiryLabel(item){
+  if(!item.expiresAt) return '';
+  const now = Date.now();
+  const ms = item.expiresAt - now;
+  const hrs = ms / 3600000;
+  if(hrs < 0) return '🗑 Expired ' + timeAgo(item.expiresAt);
+  if(hrs < 1) return '⚠️ Expires in under an hour';
+  if(hrs < 24) return '⚠️ Expires in ' + Math.ceil(hrs) + 'h';
+  const days = Math.ceil(hrs / 24);
+  return '🕐 ' + days + ' day' + (days!==1?'s':'') + ' left';
+}
+
+function renderStoredFoodTab(){
+  const bar = document.getElementById('stats-bar');
+  if(bar) bar.style.display = 'none';
+  const container = document.getElementById('items-container');
+
+  const all = (STATE.storedFood || []).slice().sort((a,b) => {
+    // Sort: expired last, then by soonest expiry, then alphabetical
+    const sa = storedFoodStatus(a), sb = storedFoodStatus(b);
+    if(sa === 'expired' && sb !== 'expired') return 1;
+    if(sb === 'expired' && sa !== 'expired') return -1;
+    if(a.expiresAt && b.expiresAt) return a.expiresAt - b.expiresAt;
+    if(a.expiresAt) return -1;
+    if(b.expiresAt) return 1;
+    return (a.name||'').localeCompare(b.name||'');
+  });
+
+  if(!all.length){
+    container.innerHTML = empty('🫙','Nothing stored yet','Add leftovers or meal-prepped food to track their freshness.');
+    return;
+  }
+
+  // Separate into active and expired
+  const active  = all.filter(i => i.amount !== 'gone' && storedFoodStatus(i) !== 'expired');
+  const warn    = all.filter(i => i.amount !== 'gone' && storedFoodStatus(i) === 'warn' && active.includes(i));
+  const expired = all.filter(i => storedFoodStatus(i) === 'expired' || i.amount === 'gone');
+
+  const card = item => {
+    const status = storedFoodStatus(item);
+    const expiryLabel = storedFoodExpiryLabel(item);
+    const amountLabels = {plenty:'✅ Plenty',some:'⚠️ Some left',last:'🚫 Last bit',gone:'All gone'};
+    const statusCls = item.amount === 'gone' ? 'gone' : status;
+    return `<div class="stored-card ${statusCls}" onclick="openStoredDetail('${item.id}')">
+      <div class="stored-icon">${escHtml(item.emoji||'🫙')}</div>
+      <div class="stored-info">
+        <div class="stored-name">${escHtml(item.name)}</div>
+        <div class="stored-meta">Added ${timeAgo(item.addedAt)}${item.notes?' · '+escHtml(item.notes):''}</div>
+        ${expiryLabel?`<div class="stored-expiry-badge ${statusCls}">${expiryLabel}</div>`:''}
+        <div class="stored-amount-row">
+          ${['plenty','some','last','gone'].map(v =>
+            `<button class="stored-amount-btn${item.amount===v?' active'+' '+statusCls:''}"
+              onclick="event.stopPropagation();updateStoredAmount('${item.id}','${v}')"
+            >${{plenty:'✅',some:'⚠️',last:'🚫',gone:'🗑'}[v]}</button>`
+          ).join('')}
+        </div>
+      </div>
+      <span class="stored-badge ${statusCls}">${amountLabels[item.amount]||'Plenty'}</span>
+    </div>`;
+  };
+
+  let html = '';
+  if(active.length){
+    html += `<div class="stored-section-header">🫙 Stored (${active.length})</div>`;
+    html += active.map(card).join('');
+  }
+  if(expired.length){
+    html += `<div class="stored-section-header" style="color:var(--stored-expired);">🗑 Expired / Gone (${expired.length})</div>`;
+    html += expired.map(card).join('');
+  }
+
+  html += `<div style="margin-top:16px;text-align:center;">
+    <button onclick="clearExpiredStored()" style="background:none;border:1.5px solid var(--border);border-radius:50px;padding:8px 16px;font-size:0.8rem;color:var(--text2);cursor:pointer;">🗑 Clear expired &amp; gone</button>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+let _editingStoredId = null;
+const DEFAULT_SHELF_DAYS = 3;
+
+function openAddStoredFood(id){
+  _editingStoredId = id;
+  const title = document.getElementById('add-stored-title');
+  if(title) title.textContent = id ? 'Edit Stored Food' : 'Add Stored Food';
+
+  // Reset form
+  document.getElementById('stored-name-input').value = '';
+  document.getElementById('stored-emoji-input').value = '';
+  document.getElementById('stored-notes-input').value = '';
+  document.getElementById('stored-custom-days').value = '';
+  document.getElementById('stored-custom-date').value = '';
+  document.getElementById('stored-custom-shelf').style.display = 'none';
+  document.getElementById('stored-expiry-preview').textContent = '';
+
+  // Reset pickers
+  document.querySelectorAll('#stored-amount-picker .status-option').forEach(el => el.classList.toggle('selected', el.dataset.val==='plenty'));
+  document.querySelectorAll('#stored-shelf-picker .status-option').forEach(el => el.classList.toggle('selected', el.dataset.val==='3'));
+
+  if(id){
+    const item = STATE.storedFood.find(i=>i.id===id);
+    if(item){
+      document.getElementById('stored-name-input').value = item.name||'';
+      document.getElementById('stored-emoji-input').value = item.emoji||'';
+      document.getElementById('stored-notes-input').value = item.notes||'';
+      document.querySelectorAll('#stored-amount-picker .status-option').forEach(el => el.classList.toggle('selected', el.dataset.val===item.amount));
+      // Figure out shelf picker value
+      if(item.expiresAt){
+        const daysLeft = Math.round((item.expiresAt - item.addedAt) / 86400000);
+        const preset = ['3','5','7'].includes(String(daysLeft)) ? String(daysLeft) : 'custom';
+        document.querySelectorAll('#stored-shelf-picker .status-option').forEach(el => el.classList.toggle('selected', el.dataset.val===preset));
+        if(preset === 'custom'){
+          document.getElementById('stored-custom-shelf').style.display = 'flex';
+          document.getElementById('stored-custom-days').value = daysLeft;
+        }
+      }
+      updateStoredExpiryPreview();
+    }
+  } else {
+    updateStoredExpiryPreview();
+  }
+
+  openModal('add-stored-overlay');
+  setTimeout(() => document.getElementById('stored-name-input').focus(), 300);
+}
+
+function getSelectedStoredShelf(){
+  const sel = document.querySelector('#stored-shelf-picker .status-option.selected');
+  const val = sel ? sel.dataset.val : '3';
+  if(val === 'custom'){
+    const dateInput = document.getElementById('stored-custom-date').value;
+    const daysInput = document.getElementById('stored-custom-days').value;
+    if(dateInput) return { expiresAt: new Date(dateInput+'T23:59:59').getTime() };
+    if(daysInput) return { shelfDays: parseInt(daysInput)||DEFAULT_SHELF_DAYS };
+    return { shelfDays: DEFAULT_SHELF_DAYS };
+  }
+  return { shelfDays: parseInt(val)||DEFAULT_SHELF_DAYS };
+}
+
+function updateStoredExpiryPreview(){
+  const shelf = getSelectedStoredShelf();
+  const preview = document.getElementById('stored-expiry-preview');
+  if(!preview) return;
+  const now = Date.now();
+  let exp;
+  if(shelf.expiresAt) exp = shelf.expiresAt;
+  else exp = now + (shelf.shelfDays||DEFAULT_SHELF_DAYS) * 86400000;
+  const hrs = (exp - now) / 3600000;
+  if(hrs < 0) preview.textContent = '⚠️ Already expired!';
+  else if(hrs < 1) preview.textContent = '⚠️ Expires in under an hour';
+  else if(hrs < 24) preview.textContent = '⚠️ Expires in ~' + Math.ceil(hrs) + ' hours';
+  else {
+    const d = new Date(exp);
+    preview.textContent = '✅ Expires ' + d.toLocaleDateString('en-IE',{weekday:'short',month:'short',day:'numeric'});
+  }
+}
+
+async function saveStoredFood(){
+  const name = document.getElementById('stored-name-input').value.trim();
+  if(!name){ alert('Please enter a name.'); return; }
+  const emoji = document.getElementById('stored-emoji-input').value.trim() || '🫙';
+  const notes = document.getElementById('stored-notes-input').value.trim();
+  const amountEl = document.querySelector('#stored-amount-picker .status-option.selected');
+  const amount = amountEl ? amountEl.dataset.val : 'plenty';
+  const shelf = getSelectedStoredShelf();
+  const now = Date.now();
+  const expiresAt = shelf.expiresAt || (now + (shelf.shelfDays||DEFAULT_SHELF_DAYS)*86400000);
+
+  const id = _editingStoredId || uid();
+  const existing = _editingStoredId ? STATE.storedFood.find(i=>i.id===_editingStoredId) : null;
+  const record = {
+    id, name, emoji, amount, notes,
+    addedAt: existing ? existing.addedAt : now,
+    expiresAt,
+    shelfDays: shelf.shelfDays || Math.round((expiresAt-now)/86400000),
+  };
+
+  await saveRecord('storedFood', record);
+  closeModal('add-stored-overlay');
+  _editingStoredId = null;
+  showToast((_editingStoredId?'Updated':'Added') + ' ' + name);
+}
+
+async function updateStoredAmount(id, amount){
+  const item = STATE.storedFood.find(i=>i.id===id);
+  if(!item) return;
+  await saveRecord('storedFood', {...item, amount});
+}
+
+function openStoredDetail(id){
+  const item = STATE.storedFood.find(i=>i.id===id);
+  if(!item) return;
+  const status = storedFoodStatus(item);
+  const expiryLabel = storedFoodExpiryLabel(item);
+  const added = new Date(item.addedAt).toLocaleDateString('en-IE',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const expires = item.expiresAt ? new Date(item.expiresAt).toLocaleDateString('en-IE',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+
+  document.getElementById('stored-detail-title').textContent = (item.emoji||'🫙') + ' ' + item.name;
+  document.getElementById('stored-detail-sub').textContent = expiryLabel;
+  document.getElementById('stored-detail-body').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;margin:12px 0;">
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2);font-size:0.85rem;">Amount</span><span style="font-weight:600;">${{plenty:'✅ Plenty',some:'⚠️ Some',last:'🚫 Last bit',gone:'🗑 All gone'}[item.amount]||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2);font-size:0.85rem;">Added</span><span style="font-size:0.85rem;">${added}</span></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2);font-size:0.85rem;">Expires</span><span style="font-size:0.85rem;color:${status==='expired'?'var(--stored-expired)':status==='warn'?'var(--stored-warn)':'inherit'}">${expires}</span></div>
+      ${item.notes?`<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--text2);font-size:0.85rem;">Notes</span><span style="font-size:0.85rem;text-align:right;">${escHtml(item.notes)}</span></div>`:''}
+    </div>`;
+
+  document.getElementById('btn-edit-stored').onclick = () => { closeModal('stored-detail-overlay'); openAddStoredFood(id); };
+  document.getElementById('btn-delete-stored').onclick = () => deleteStoredFood(id);
+  openModal('stored-detail-overlay');
+}
+
+async function deleteStoredFood(id){
+  if(!confirm('Delete this stored food item?')) return;
+  await deleteRecord('storedFood', id);
+  closeModal('stored-detail-overlay');
+}
+
+async function clearExpiredStored(){
+  const toDelete = STATE.storedFood.filter(i => storedFoodStatus(i) === 'expired' || i.amount === 'gone');
+  if(!toDelete.length){ showToast('Nothing to clear'); return; }
+  if(!confirm(`Clear ${toDelete.length} expired/gone item${toDelete.length!==1?'s':''}?`)) return;
+  await Promise.all(toDelete.map(i => deleteRecord('storedFood', i.id)));
+  showToast(`Cleared ${toDelete.length} item${toDelete.length!==1?'s':''}`);
+}
+
+// Wire up stored food shelf picker
+function bindStoredPickerEvents(){
+  document.querySelectorAll('#stored-shelf-picker .status-option').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('#stored-shelf-picker .status-option').forEach(o=>o.classList.remove('selected'));
+      el.classList.add('selected');
+      const isCustom = el.dataset.val === 'custom';
+      document.getElementById('stored-custom-shelf').style.display = isCustom ? 'flex' : 'none';
+      updateStoredExpiryPreview();
+    });
+  });
+  document.querySelectorAll('#stored-amount-picker .status-option').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('#stored-amount-picker .status-option').forEach(o=>o.classList.remove('selected'));
+      el.classList.add('selected');
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // ADMIN TAB
 // ══════════════════════════════════════════════════════════════════════════════
 async function loadAdminData(){
@@ -3836,6 +4275,7 @@ function bindEvents(){
 
   // More drawer
   document.getElementById('more-drawer-backdrop').addEventListener('click', closeMoreDrawer);
+  document.getElementById('drawer-stored').addEventListener('click',  () => { closeMoreDrawer(); setMode('stored'); });
   document.getElementById('drawer-stores').addEventListener('click',  () => { closeMoreDrawer(); setMode('stores'); });
   document.getElementById('drawer-history').addEventListener('click', () => { closeMoreDrawer(); setMode('history'); });
   document.getElementById('drawer-install').addEventListener('click', () => { closeMoreDrawer(); openInstallModal(); });
@@ -3938,12 +4378,17 @@ function bindEvents(){
     'shop-detail-overlay',
     'admin-pin-overlay',
     'change-pin-overlay',
+    'switch-confirm-overlay',
+    'add-stored-overlay',
+    'stored-detail-overlay',
   ].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.addEventListener('click', e => {
       if(e.target === el) closeModal(id);
     });
   });
+
+  bindStoredPickerEvents();
 
   // Expose functions used in dynamically-rendered innerHTML onclick attributes
   window.openDetail              = openDetail;
@@ -3969,7 +4414,16 @@ function bindEvents(){
   window.renderCookTab           = renderCookTab;
   window.toggleSkipItem          = toggleSkipItem;
   window.clearSkipped            = clearSkipped;
-  window.switchIngTab            = switchIngTab;
+  window.openAddStoredFood       = openAddStoredFood;
+  window.saveStoredFood          = saveStoredFood;
+  window.openStoredDetail        = openStoredDetail;
+  window.deleteStoredFood        = deleteStoredFood;
+  window.updateStoredAmount      = updateStoredAmount;
+  window.clearExpiredStored      = clearExpiredStored;
+  window.updateStoredExpiryPreview = updateStoredExpiryPreview;
+  window.toggleCatCollapse       = toggleCatCollapse;
+  window.closeModal              = closeModal;
+  window.openModal               = openModal;
   // Meal plan
   window.selectMealDate          = selectMealDate;
   window.setMealView             = setMealView;
@@ -3990,8 +4444,12 @@ function bindEvents(){
   window.copyAllFeedback         = copyAllFeedback;
   window.exportFeedbackCSV       = exportFeedbackCSV;
   window.STATE                   = STATE;
+  window.confirmSwitchFamily     = confirmSwitchFamily;
+  window.executePendingSwitch    = executePendingSwitch;
+  window.cancelAdminPin          = cancelAdminPin;
   window.verifyAdminPin          = verifyAdminPin;
   window.promptAdminPin          = promptAdminPin;
+  window.cancelAdminPin          = cancelAdminPin;
   window.openChangePinModal      = openChangePinModal;
   window.saveNewPin              = saveNewPin;
   window.openMealQuickAdd        = openMealQuickAdd;
