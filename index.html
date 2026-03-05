@@ -786,7 +786,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="form-group">
       <label class="form-label">Estimated Price <span style="font-weight:400;text-transform:none;">(optional)</span></label>
       <div class="currency-prefix">
-        <span class="prefix" id="price-prefix">$</span>
+        <span class="prefix" id="price-prefix">€</span>
         <input class="form-input" id="item-price-input" type="number" min="0" step="0.01" placeholder="0.00" />
       </div>
     </div>
@@ -1183,10 +1183,11 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="meal-picker-title">Add to Meal</div>
-    <input class="meal-picker-search" id="meal-picker-search" placeholder="🔍 Search recipes or items…" />
+    <input class="meal-picker-search" id="meal-picker-search" placeholder="🔍 Search…" />
     <div class="meal-picker-tabs">
       <button class="meal-picker-tab active" id="mpt-recipes" onclick="switchMealPickerTab('recipes')">👨‍🍳 Recipes</button>
       <button class="meal-picker-tab" id="mpt-items" onclick="switchMealPickerTab('items')">📦 Items</button>
+      <button class="meal-picker-tab" id="mpt-stored" onclick="switchMealPickerTab('stored')">🫙 Stored</button>
     </div>
     <div class="meal-picker-list" id="meal-picker-list"></div>
     <div class="btn-row" style="margin-top:12px;">
@@ -1390,7 +1391,7 @@ let _pwaInstalled = false;
 // ══════════════════════════════════════════════════════════════════════════════
 let STATE = {
   familyCode: null,
-  currency: 'USD',
+  currency: 'EUR',
   mode: 'pantry',
   items: [],
   categories: [...DEFAULT_CATS],
@@ -1443,11 +1444,16 @@ let STATE = {
 // CURRENCY HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
 function currencySymbol(code){
-  return (CURRENCIES.find(c=>c.code===code)||{symbol:'$'}).symbol;
+  return (CURRENCIES.find(c=>c.code===code)||{symbol:'€'}).symbol;
+}
+// Returns the currency to use for display: store's own currency if one is selected, else home currency
+function activeCurrency(){
+  const store = STATE.stores.find(s => s.id === STATE.selectedStoreId);
+  return (store && store.currency) ? store.currency : STATE.currency;
 }
 function fmt(amount, code){
   if(amount==null||amount==='') return '—';
-  code = code||STATE.currency;
+  code = code || STATE.currency;
   const sym = currencySymbol(code);
   return sym + Number(amount).toFixed(2);
 }
@@ -2189,7 +2195,7 @@ function renderStats(){
   let extra='';
   if(STATE.mode==='shopping'){
     const est=calcEstimatedTotal();
-    extra=`<div class="stat-chip cost-chip"><div class="stat-num">${est?currencySymbol(STATE.currency)+est.toFixed(2):'—'}</div><div class="stat-label">Est. Total</div></div>`;
+    extra=`<div class="stat-chip cost-chip"><div class="stat-num">${est?fmt(est, activeCurrency()):'—'}</div><div class="stat-label">Est. Total</div></div>`;
   }
   bar.innerHTML=`
     <div class="stat-chip out-chip"><div class="stat-num">${out}</div><div class="stat-label">Out</div></div>
@@ -2291,7 +2297,7 @@ function renderShoppingTab(){
   const store=STATE.stores.find(s=>s.id===STATE.selectedStoreId);
   document.getElementById('ssl-name').textContent=store?store.name+' — '+store.city:'Select a store…';
   const est=calcEstimatedTotal();
-  document.getElementById('etb-amount').textContent=est?fmt(est):'—';
+  document.getElementById('etb-amount').textContent=est?fmt(est, activeCurrency()):'—';
   const needCount=STATE.items.filter(i=>i.status!=='full'&&!STATE.skippedIds.has(i.id)).length;
   document.getElementById('etb-note').textContent=needCount+' item'+(needCount!==1?'s':'')+' needed';
 
@@ -2342,7 +2348,8 @@ function shoppingItemCard(item, isSkipped=false){
   const storePrices=item.storePrices||{};
   const storePrice=store&&storePrices[store.id];
   const displayPrice=storePrice||item.estimatedPrice;
-  const priceTag=displayPrice?`<div class="item-price-tag">~${fmt(displayPrice)}</div>`:'';
+  const displayCurrency = (store && store.currency) ? store.currency : STATE.currency;
+  const priceTag=displayPrice?`<div class="item-price-tag">~${fmt(displayPrice, displayCurrency)}</div>`:'';
   const dotContent=item.status==='out'?'✕':item.status==='low'?'▲':'✓';
   return `<div class="item-card status-${item.status}${isSkipped?' skipped-item':''}" style="${isSkipped?'opacity:0.45;':''}">
     <div class="status-dot" onclick="openDetail('${item.id}')">${dotContent}</div>
@@ -2423,21 +2430,21 @@ function renderHistoryTab(){
   let html='';
   const totalSpend=logs.reduce((s,l)=>s+(l.actualTotal||l.estimatedTotal||0),0);
   html+=`<div style="background:var(--hist-accent);color:#fff;border-radius:14px;padding:14px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
-    <div><div style="font-family:'Fraunces',serif;font-size:1rem;font-weight:700;">Total Tracked Spend</div><div style="font-size:0.78rem;opacity:0.8;">${logs.length} shops logged</div></div>
-    <div style="font-family:'Fraunces',serif;font-size:1.5rem;font-weight:700;">${fmt(totalSpend)}</div>
+    <div><div style="font-family:'Fraunces',serif;font-size:1rem;font-weight:700;">Total Tracked Spend</div><div style="font-size:0.78rem;opacity:0.8;">${logs.length} shops logged · ${STATE.currency}</div></div>
+    <div style="font-family:'Fraunces',serif;font-size:1.5rem;font-weight:700;">${fmt(totalSpend, STATE.currency)}</div>
   </div>`;
 
   for(const mKey of Object.keys(byMonth)){
     const monthLogs=byMonth[mKey];
     const monthTotal=monthLogs.reduce((s,l)=>s+(l.actualTotal||l.estimatedTotal||0),0);
-    html+=`<div class="history-month-label">${formatMonth(new Date(mKey+'-01').getTime())} <span style="float:right;font-size:0.8rem;font-weight:400;">${fmt(monthTotal)}</span></div>`;
+    html+=`<div class="history-month-label">${formatMonth(new Date(mKey+'-01').getTime())} <span style="float:right;font-size:0.8rem;font-weight:400;">${fmt(monthTotal, STATE.currency)}</span></div>`;
     for(const log of monthLogs){
       const store=STATE.stores.find(s=>s.id===log.storeId);
       const storeName=store?store.name:(log.storeName||'Unknown Store');
       const total=log.actualTotal||log.estimatedTotal;
       const itemCount=(log.items||[]).filter(i=>i.bought).length;
       const needsConversion=store&&store.currency&&store.currency!==STATE.currency;
-      const convertedChip=needsConversion?`<span class="converted-chip">~${STATE.currency}</span>`:'';
+      const convertedChip=needsConversion?`<span class="converted-chip">${store.currency}</span>`:'';
       html+=`<div class="shop-card" id="sc-${log.id}" onclick="toggleShopCard('${log.id}')">
         <div class="shop-card-top">
           <div>
@@ -2446,7 +2453,7 @@ function renderHistoryTab(){
             <div class="shop-card-items">${itemCount} item${itemCount!==1?'s':''} bought</div>
           </div>
           <div>
-            <div class="shop-card-total">${total?fmt(total):'—'}${convertedChip}</div>
+            <div class="shop-card-total">${total?fmt(total, log.currency||STATE.currency):'—'}${convertedChip}</div>
             <div class="shop-card-total-label">Total</div>
           </div>
         </div>
@@ -2463,14 +2470,15 @@ function renderHistoryTab(){
 }
 
 function renderReceiptLines(log){
+  const c = log.currency || STATE.currency;
   if(!log.items||!log.items.length) return '<div style="color:var(--text2);font-size:0.82rem;">No items recorded.</div>';
   return log.items.filter(i=>i.bought).map(i=>`
     <div class="receipt-line">
       <span class="rl-name">${escHtml(i.itemName)}</span>
       <span>
-        ${i.actualPrice?`<span class="rl-price">${fmt(i.actualPrice)}</span>`:''}
-        ${i.estimatedPrice&&i.actualPrice&&Math.abs(i.actualPrice-i.estimatedPrice)>0.01?`<span class="rl-est">(est. ${fmt(i.estimatedPrice)})</span>`:''}
-        ${!i.actualPrice&&i.estimatedPrice?`<span class="rl-est">~${fmt(i.estimatedPrice)}</span>`:''}
+        ${i.actualPrice?`<span class="rl-price">${fmt(i.actualPrice, c)}</span>`:''}
+        ${i.estimatedPrice&&i.actualPrice&&Math.abs(i.actualPrice-i.estimatedPrice)>0.01?`<span class="rl-est">(est. ${fmt(i.estimatedPrice, c)})</span>`:''}
+        ${!i.actualPrice&&i.estimatedPrice?`<span class="rl-est">~${fmt(i.estimatedPrice, c)}</span>`:''}
       </span>
     </div>`).join('');
 }
@@ -2598,7 +2606,7 @@ function openDetail(id){
   const item=STATE.items.find(i=>i.id===id);
   if(!item) return;
   document.getElementById('detail-title').textContent=item.name;
-  const priceTxt=item.estimatedPrice?` · ~${fmt(item.estimatedPrice)}`:'';
+  const priceTxt=item.estimatedPrice?` · ~${fmt(item.estimatedPrice, STATE.currency)}`:'';
   document.getElementById('detail-sub').textContent=item.category+priceTxt;
   openModal('detail-overlay');
 }
@@ -3296,7 +3304,11 @@ function dateStr(d){ return d.toISOString().slice(0,10); }
 function todayStr(){ return dateStr(new Date()); }
 function getMealDay(ds){ return STATE.mealPlan[ds] || {breakfast:[],lunch:[],dinner:[],snacks:[]}; }
 function mealEntryCount(ds){ const d=getMealDay(ds); return MEAL_SLOTS.reduce((n,s)=>n+(d[s]||[]).length,0); }
-function entryEmoji(e){ return e.type==='recipe'?(STATE.recipes.find(r=>r.id===e.id)||{emoji:'🍽️'}).emoji||'🍽️':catEmoji((STATE.items.find(i=>i.id===e.id)||{}).category||''); }
+function entryEmoji(e){
+  if(e.type==='recipe') return (STATE.recipes.find(r=>r.id===e.id)||{emoji:'🍽️'}).emoji||'🍽️';
+  if(e.type==='stored') return e.emoji||'🫙';
+  return e.emoji||catEmoji((STATE.items.find(i=>i.id===e.id)||{}).category||'');
+}
 
 // Get Monday of the week containing date d
 function getMonday(d){ const c=new Date(d); c.setHours(0,0,0,0); const day=c.getDay(); c.setDate(c.getDate()-(day===0?6:day-1)); return c; }
@@ -3503,6 +3515,7 @@ function openMealPicker(ds, slot, templateCtx=null){
   document.getElementById('meal-picker-search').value='';
   document.getElementById('mpt-recipes').classList.add('active');
   document.getElementById('mpt-items').classList.remove('active');
+  document.getElementById('mpt-stored').classList.remove('active');
   renderMealPickerList('');
   openModal('meal-picker-overlay');
   setTimeout(()=>document.getElementById('meal-picker-search').focus(),300);
@@ -3512,6 +3525,7 @@ function switchMealPickerTab(tab){
   _mealPickerTab=tab;
   document.getElementById('mpt-recipes').classList.toggle('active',tab==='recipes');
   document.getElementById('mpt-items').classList.toggle('active',tab==='items');
+  document.getElementById('mpt-stored').classList.toggle('active',tab==='stored');
   renderMealPickerList(document.getElementById('meal-picker-search').value);
 }
 
@@ -3529,6 +3543,31 @@ function renderMealPickerList(filter){
           <div class="meal-picker-item-meta">${(r.ingredients||[]).length} ingredients${r.cookTime?' · '+r.cookTime:''}</div>
         </div>
       </div>`).join('');
+  } else if(_mealPickerTab==='stored'){
+    const available = (STATE.storedFood||[]).filter(s =>
+      s.amount !== 'gone' &&
+      storedFoodStatus(s) !== 'expired' &&
+      (s.name||'').toLowerCase().includes(filter)
+    ).sort((a,b) => (a.expiresAt||Infinity)-(b.expiresAt||Infinity));
+    if(!available.length){
+      list.innerHTML=`<div style="text-align:center;color:var(--text2);padding:20px;font-size:0.88rem;">${filter?'No stored food matches.':'No stored food available — add leftovers in Stored Food.'}</div>`;
+      return;
+    }
+    list.innerHTML=available.map(s=>{
+      const status=storedFoodStatus(s);
+      const expiryLabel=storedFoodExpiryLabel(s);
+      const dotColor=status==='warn'?'var(--stored-warn)':'var(--stored-accent)';
+      return `<div class="meal-picker-item" onclick="addMealEntry('stored','${s.id}','${escHtml(s.name)}','${escHtml(s.emoji||'🫙')}')">
+        <div class="meal-picker-item-emoji">${escHtml(s.emoji||'🫙')}</div>
+        <div style="flex:1;">
+          <div class="meal-picker-item-name">${escHtml(s.name)}</div>
+          <div class="meal-picker-item-meta" style="display:flex;gap:6px;align-items:center;">
+            <span>${{plenty:'✅ Plenty',some:'⚠️ Some',last:'🚫 Last bit'}[s.amount]||'Plenty'}</span>
+            ${expiryLabel?`<span style="color:${dotColor};">${expiryLabel}</span>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
   } else {
     const results=STATE.items.filter(i=>i.name.toLowerCase().includes(filter)).sort((a,b)=>a.name.localeCompare(b.name));
     if(!results.length){ list.innerHTML=`<div style="text-align:center;color:var(--text2);padding:20px;font-size:0.88rem;">No items match.</div>`; return; }
