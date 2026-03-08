@@ -633,6 +633,15 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 .admin-export-btn{flex:1;padding:10px;border-radius:10px;border:1.5px solid #3a3a6a;background:#1e1e3f;color:#7b8cde;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;min-width:100px;text-align:center;}
 .admin-export-btn:hover{background:#3a3a6a;color:#fff;}
 
+/* ── STORE NEARBY SEARCH ── */
+.store-result-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;cursor:pointer;transition:background 0.12s;border-bottom:1px solid var(--border);}
+.store-result-item:last-child{border-bottom:none;}
+.store-result-item:active{background:var(--surface2);}
+.store-result-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px;}
+.store-result-name{font-size:0.88rem;font-weight:600;color:var(--text);}
+.store-result-addr{font-size:0.73rem;color:var(--text2);margin-top:1px;}
+.store-search-status{text-align:center;padding:14px;font-size:0.82rem;color:var(--text2);}
+
 @media(min-width:600px){main{padding:22px 24px;}}
 
 </style>
@@ -871,7 +880,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="form-row">
       <div class="form-group" style="flex:0 0 80px;">
         <label class="form-label">Emoji</label>
-        <input class="form-input" id="stored-emoji-input" placeholder="🍲" maxlength="2" style="text-align:center;font-size:1.3rem;" />
+        <input class="form-input" id="stored-emoji-input" placeholder="🍲" style="text-align:center;font-size:1.3rem;" oninput="clampToOneEmoji(this)" />
       </div>
       <div class="form-group" style="flex:1;">
         <label class="form-label">Amount</label>
@@ -983,9 +992,20 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 
 <!-- ADD STORE -->
 <div class="overlay" id="add-store-overlay">
-  <div class="modal">
+  <div class="modal" style="max-height:88vh;overflow-y:auto;">
     <div class="modal-handle"></div>
     <div class="modal-title" id="add-store-title">Add Store</div>
+
+    <!-- NEARBY SEARCH (only shown when adding new, not editing) -->
+    <div id="store-nearby-section">
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input class="form-input" id="store-search-input" placeholder="🔍 Search stores by name or city…" style="flex:1;" oninput="onStoreSearchInput()" />
+        <button class="btn btn-secondary" id="btn-nearby-stores" onclick="findNearbyStores()" style="white-space:nowrap;padding:10px 12px;font-size:0.82rem;">📍 Near Me</button>
+      </div>
+      <div id="store-search-results" style="display:none;max-height:180px;overflow-y:auto;border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;"></div>
+      <div style="text-align:center;color:var(--text2);font-size:0.72rem;margin-bottom:10px;">— or fill in manually below —</div>
+    </div>
+
     <div class="form-group">
       <label class="form-label">Store Name</label>
       <input class="form-input" id="store-name-input" placeholder="e.g. Tesco" />
@@ -1095,7 +1115,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Emoji</label>
-        <input class="form-input" id="recipe-emoji-input" placeholder="🍽️" style="text-align:center;font-size:1.4rem;" />
+        <input class="form-input" id="recipe-emoji-input" placeholder="🍽️" style="text-align:center;font-size:1.4rem;" oninput="clampToOneEmoji(this)" />
       </div>
       <div class="form-group">
         <label class="form-label">Cook Time</label>
@@ -1675,6 +1695,13 @@ function detectLocationCurrency(){
 async function loadAllData(){
   detachListeners();
 
+  // Fetch family-level currency from Firebase — overrides localStorage default
+  const familySettingsSnap = await load('familySettings', null);
+  if(familySettingsSnap && familySettingsSnap.currency){
+    STATE.currency = familySettingsSnap.currency;
+    persistSettings();
+  }
+
   // Load settings UI — settings-currency is rendered dynamically in renderFamilyModal so guard it
   const currencyEl = document.getElementById('settings-currency');
   if(currencyEl) currencyEl.value = STATE.currency;
@@ -1739,6 +1766,16 @@ async function loadAllData(){
   subscribe('mealPlan', val => {
     STATE.mealPlan = val || {};
     if(STATE.mode === 'meal') renderMealTab();
+  });
+  subscribe('familySettings', val => {
+    if(val && val.currency && val.currency !== STATE.currency){
+      STATE.currency = val.currency;
+      persistSettings(); // keep localStorage in sync
+      document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
+      const currencyEl = document.getElementById('settings-currency');
+      if(currencyEl) currencyEl.value = STATE.currency;
+      render();
+    }
   });
   subscribe('mealTemplates', val => {
     STATE.mealTemplates = val ? Object.entries(val).map(([k,t])=>t.id?t:{...t,id:k}) : [];
@@ -1955,6 +1992,10 @@ async function updateCurrency(val){
   STATE.currency = val;
   persistSettings();
   document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
+  // Also save to Firebase so all family members see the same currency
+  if(STATE.familyCode && STATE.familyCode !== 'ADMIN-1337'){
+    await save('familySettings', { currency: val });
+  }
   render();
 }
 
@@ -2178,6 +2219,17 @@ function timeAgo(ts){
   return Math.floor(d/86400000)+'d ago';
 }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Limit an emoji input to one grapheme cluster — handles skin tones, ZWJ sequences, flags, etc.
+function clampToOneEmoji(input){
+  const val = input.value;
+  if(!val) return;
+  try {
+    const segs = [...new Intl.Segmenter().segment(val)].map(s => s.segment);
+    if(segs.length > 1) input.value = segs[segs.length - 1];
+  } catch(e) {
+    if([...val].length > 2) input.value = [...val].slice(0, 2).join('');
+  }
+}
 function formatDate(ts){
   return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
@@ -2625,12 +2677,16 @@ function openAddStore(){
   document.getElementById('add-store-title').textContent='Add Store';
   document.getElementById('store-name-input').value='';
   document.getElementById('store-city-input').value='';
+  document.getElementById('store-search-input').value='';
+  document.getElementById('store-search-results').style.display='none';
+  document.getElementById('store-search-results').innerHTML='';
+  document.getElementById('store-nearby-section').style.display='block';
   const sel=document.getElementById('store-currency-input');
   sel.innerHTML=CURRENCIES.map(c=>`<option value="${c.code}">${c.symbol} ${c.code} — ${c.name}</option>`).join('');
   sel.value=STATE.currency;
   document.getElementById('btn-delete-store').style.display='none';
   openModal('add-store-overlay');
-  setTimeout(()=>document.getElementById('store-name-input').focus(),300);
+  setTimeout(()=>document.getElementById('store-search-input').focus(),300);
 }
 
 function openStoreDetail(id){
@@ -2640,11 +2696,120 @@ function openStoreDetail(id){
   document.getElementById('add-store-title').textContent='Edit Store';
   document.getElementById('store-name-input').value=store.name;
   document.getElementById('store-city-input').value=store.city||'';
+  document.getElementById('store-nearby-section').style.display='none'; // hide search when editing
   const sel=document.getElementById('store-currency-input');
   sel.innerHTML=CURRENCIES.map(c=>`<option value="${c.code}">${c.symbol} ${c.code} — ${c.name}</option>`).join('');
   sel.value=store.currency||STATE.currency;
   document.getElementById('btn-delete-store').style.display='block';
   openModal('add-store-overlay');
+}
+
+// ── NEARBY STORE DISCOVERY (Overpass API / OpenStreetMap — no API key needed) ──
+
+const SHOP_TAGS = ['supermarket','convenience','grocery','bakery','butcher','greengrocer','deli','fishmonger','alcohol','wine','beverages'];
+const SHOP_EMOJI = {supermarket:'🛒',convenience:'🏪',grocery:'🥕',bakery:'🥐',butcher:'🥩',greengrocer:'🥦',deli:'🧀',fishmonger:'🐟',alcohol:'🍺',wine:'🍷',beverages:'🧃'};
+
+let _storeSearchTimer = null;
+
+function onStoreSearchInput(){
+  const q = document.getElementById('store-search-input').value.trim();
+  clearTimeout(_storeSearchTimer);
+  if(!q){ document.getElementById('store-search-results').style.display='none'; return; }
+  _storeSearchTimer = setTimeout(() => searchStoresByText(q), 450);
+}
+
+async function searchStoresByText(q){
+  const resultsEl = document.getElementById('store-search-results');
+  resultsEl.style.display='block';
+  resultsEl.innerHTML=`<div class="store-search-status">🔍 Searching…</div>`;
+  try {
+    // Nominatim geocoding-style search via Overpass for shops matching name
+    const query = `[out:json][timeout:8];
+node["shop"~"${SHOP_TAGS.join('|')}"](if:t["name"])(if:t["name"]~"${q.replace(/"/g,'')}",i);
+out center 15;`;
+    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    renderStoreSearchResults(data.elements||[]);
+  } catch(e) {
+    resultsEl.innerHTML=`<div class="store-search-status">⚠️ Search failed. Check your connection.</div>`;
+  }
+}
+
+async function findNearbyStores(){
+  const resultsEl = document.getElementById('store-search-results');
+  resultsEl.style.display='block';
+  resultsEl.innerHTML=`<div class="store-search-status">📍 Getting your location…</div>`;
+  if(!navigator.geolocation){ resultsEl.innerHTML=`<div class="store-search-status">⚠️ Location not available on this device.</div>`; return; }
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const {latitude:lat, longitude:lon} = pos.coords;
+    resultsEl.innerHTML=`<div class="store-search-status">🛒 Finding nearby shops…</div>`;
+    try {
+      const radius = 2000; // 2km
+      const tagFilter = SHOP_TAGS.map(t=>`["shop"="${t}"]`).join('');
+      const query = `[out:json][timeout:10];
+(
+  node["shop"~"${SHOP_TAGS.join('|')}"](around:${radius},${lat},${lon});
+);
+out center 30;`;
+      const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      renderStoreSearchResults(data.elements||[], {lat, lon});
+    } catch(e) {
+      resultsEl.innerHTML=`<div class="store-search-status">⚠️ Couldn't load nearby stores. Check your connection.</div>`;
+    }
+  }, err => {
+    resultsEl.innerHTML=`<div class="store-search-status">⚠️ Location access denied. Try searching by name above.</div>`;
+  }, {timeout:8000, maximumAge:60000});
+}
+
+function renderStoreSearchResults(elements, userPos){
+  const resultsEl = document.getElementById('store-search-results');
+  if(!elements.length){ resultsEl.innerHTML=`<div class="store-search-status">No shops found. Try a different search or add manually.</div>`; return; }
+
+  // Sort by distance if we have user position
+  if(userPos){
+    elements.sort((a,b)=>{
+      const da = Math.hypot((a.lat||a.center?.lat)-userPos.lat, (a.lon||a.center?.lon)-userPos.lon);
+      const db = Math.hypot((b.lat||b.center?.lat)-userPos.lat, (b.lon||b.center?.lon)-userPos.lon);
+      return da - db;
+    });
+  }
+
+  resultsEl.innerHTML = elements.slice(0, 20).map(el => {
+    const tags = el.tags||{};
+    const name = tags.name || tags['name:en'] || 'Unnamed Shop';
+    const shopType = tags.shop||'shop';
+    const emoji = SHOP_EMOJI[shopType]||'🏪';
+    const city = tags['addr:city']||tags['addr:town']||tags['addr:village']||'';
+    const street = tags['addr:street'] ? (tags['addr:housenumber']?tags['addr:housenumber']+' ':'') + tags['addr:street'] : '';
+    const addr = [street, city].filter(Boolean).join(', ');
+    let distStr = '';
+    if(userPos){
+      const elLat = el.lat||el.center?.lat, elLon = el.lon||el.center?.lon;
+      if(elLat&&elLon){
+        const dx = Math.hypot((elLat-userPos.lat)*111320, (elLon-userPos.lon)*111320*Math.cos(userPos.lat*Math.PI/180));
+        distStr = dx<1000 ? Math.round(dx)+'m' : (dx/1000).toFixed(1)+'km';
+      }
+    }
+    return `<div class="store-result-item" onclick="pickSearchedStore('${escHtml(name)}','${escHtml(city||addr)}','${escHtml(shopType)}')">
+      <div class="store-result-icon">${emoji}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="store-result-name">${escHtml(name)}</div>
+        <div class="store-result-addr">${escHtml(addr||shopType)}${distStr?' · '+distStr:''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pickSearchedStore(name, city, type){
+  document.getElementById('store-name-input').value = name;
+  document.getElementById('store-city-input').value = city;
+  document.getElementById('store-search-results').style.display='none';
+  document.getElementById('store-search-input').value='';
+  // Scroll to manual form
+  document.getElementById('store-name-input').scrollIntoView({behavior:'smooth',block:'center'});
+  document.getElementById('store-name-input').focus();
 }
 
 async function saveStore(){
@@ -4461,6 +4626,10 @@ function bindEvents(){
   window.clearExpiredStored      = clearExpiredStored;
   window.updateStoredExpiryPreview = updateStoredExpiryPreview;
   window.toggleCatCollapse       = toggleCatCollapse;
+  window.findNearbyStores        = findNearbyStores;
+  window.pickSearchedStore       = pickSearchedStore;
+  window.onStoreSearchInput      = onStoreSearchInput;
+  window.clampToOneEmoji         = clampToOneEmoji;
   window.closeModal              = closeModal;
   window.openModal               = openModal;
   // Meal plan
@@ -4676,4 +4845,3 @@ init();
 </script>
 </body>
 </html>
-
