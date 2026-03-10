@@ -678,7 +678,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <button class="btn btn-primary" id="btn-finish-onboard" style="width:100%;margin-bottom:12px;">Get Started →</button>
     <div class="onboard-or">— or join an existing family —</div>
     <div class="join-row">
-      <input class="form-input" id="join-code-input" placeholder="FAMILY CODE" maxlength="12" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
+      <input class="form-input" id="join-code-input" placeholder="e.g. APPLE-8754" maxlength="15" style="text-transform:uppercase;" oninput="autoFormatFamilyCode(this)" />
       <button class="btn btn-secondary" id="btn-join-family" style="flex:0;white-space:nowrap;padding:12px 16px;">Join</button>
     </div>
     <div style="margin-top:16px;">
@@ -1850,11 +1850,38 @@ async function finishOnboard(){
   hideOnboarding();
 }
 
+// Normalise a raw family code string → "WORD-1234" format
+// Handles: "APPLE 8754", "apple8754", "APPLE-8754", "APPLE  -  8754" etc.
+function normaliseFamilyCode(raw){
+  const s = raw.toUpperCase().replace(/[^A-Z0-9]/g, ''); // strip everything except letters/digits
+  const match = s.match(/^([A-Z]+)(\d+)$/);
+  if(match) return `${match[1]}-${match[2]}`;
+  return s; // already weird format, return cleaned version
+}
+
+function autoFormatFamilyCode(input){
+  const pos = input.selectionStart;
+  const raw = input.value.toUpperCase();
+  // Only insert dash once the user has typed past the letters into digits
+  const stripped = raw.replace(/[^A-Z0-9]/g, '');
+  const match = stripped.match(/^([A-Z]+)(\d+)$/);
+  if(match){
+    const formatted = `${match[1]}-${match[2]}`;
+    if(input.value !== formatted){
+      input.value = formatted;
+      // Keep cursor after the dash if they just finished typing letters
+      const newPos = Math.min(pos + (formatted.length - raw.length), formatted.length);
+      try{ input.setSelectionRange(newPos, newPos); }catch(e){}
+    }
+  } else {
+    input.value = raw.replace(/[^A-Z0-9\-]/g, '');
+  }
+}
+
 async function joinFamily(){
-  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+  const code = normaliseFamilyCode(document.getElementById('join-code-input').value.trim());
   if(!code||code.length<4){ alert('Please enter a valid family code.'); return; }
   if(code === 'ADMIN-1337'){
-    // Hide the onboarding overlay (z-index 500) so PIN modal (z-index 200) is visible
     document.getElementById('onboard-overlay').style.display='none';
     closeModal('family-overlay');
     promptAdminPin();
@@ -1869,7 +1896,7 @@ async function joinFamily(){
 }
 
 async function switchFamily(){
-  const code = document.getElementById('switch-code-input').value.trim().toUpperCase();
+  const code = normaliseFamilyCode(document.getElementById('switch-code-input').value.trim());
   if(!code||code.length<4){ alert('Please enter a valid family code.'); return; }
   if(code === STATE.familyCode){ closeModal('family-overlay'); return; }
   if(code === 'ADMIN-1337'){
@@ -1962,7 +1989,7 @@ function renderFamilyModal(){
     <div class="form-group">
       <label class="form-label">${isAdminMode ? 'Switch to a Kitchen' : 'Add Another Kitchen'}</label>
       <div class="join-row">
-        <input class="form-input" id="switch-code-input" placeholder="Enter family code" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
+        <input class="form-input" id="switch-code-input" placeholder="e.g. APPLE-8754" style="text-transform:uppercase;" oninput="autoFormatFamilyCode(this)" />
         <button class="new-cat-btn" id="btn-switch-family" style="background:var(--shop-accent);" onclick="switchFamily()">Join</button>
       </div>
     </div>`;
@@ -4669,7 +4696,7 @@ function bindEvents(){
   // Onboarding
   document.getElementById('btn-finish-onboard').addEventListener('click', finishOnboard);
   document.getElementById('btn-join-family').addEventListener('click', joinFamily);
-  document.getElementById('join-code-input').addEventListener('input', e => e.target.value = e.target.value.toUpperCase());
+  document.getElementById('join-code-input').addEventListener('input', e => autoFormatFamilyCode(e.target));
 
   // Header
   document.getElementById('family-badge-btn').addEventListener('click', () => { renderFamilyModal(); openModal('family-overlay'); });
@@ -4879,6 +4906,7 @@ function bindEvents(){
   window.confirmRemoveFamily     = confirmRemoveFamily;
   window.renderFamilyModal       = renderFamilyModal;
   window.copyFamilyCode          = copyFamilyCode;
+  window.autoFormatFamilyCode    = autoFormatFamilyCode;
   window.switchFamily            = switchFamily;
   window.openMoreDrawer          = openMoreDrawer;
   window.closeMoreDrawer         = closeMoreDrawer;
