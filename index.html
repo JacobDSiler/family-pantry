@@ -633,6 +633,11 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 .admin-export-btn{flex:1;padding:10px;border-radius:10px;border:1.5px solid #3a3a6a;background:#1e1e3f;color:#7b8cde;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;min-width:100px;text-align:center;}
 .admin-export-btn:hover{background:#3a3a6a;color:#fff;}
 
+/* ── EMOJI PICKER ── */
+.emoji-btn{font-size:1.5rem;width:100%;aspect-ratio:1;border:none;background:none;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background 0.1s;line-height:1;}
+.emoji-btn:hover{background:var(--surface2);}
+.emoji-btn:active{background:var(--border);}
+
 /* ── STORE NEARBY SEARCH ── */
 .store-result-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;cursor:pointer;transition:background 0.12s;border-bottom:1px solid var(--border);}
 .store-result-item:last-child{border-bottom:none;}
@@ -880,7 +885,9 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="form-row">
       <div class="form-group" style="flex:0 0 80px;">
         <label class="form-label">Emoji</label>
-        <input class="form-input" id="stored-emoji-input" placeholder="🍲" style="text-align:center;font-size:1.3rem;" oninput="clampToOneEmoji(this)" />
+        <button type="button" id="stored-emoji-btn" onclick="openEmojiPicker('stored')"
+          style="width:100%;height:46px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface2);font-size:1.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color 0.15s;">🍲</button>
+        <input type="hidden" id="stored-emoji-input" value="🍲" />
       </div>
       <div class="form-group" style="flex:1;">
         <label class="form-label">Amount</label>
@@ -1099,6 +1106,20 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
   </div>
 </div>
 
+
+<!-- EMOJI PICKER MODAL -->
+<div class="overlay" id="emoji-picker-overlay" style="z-index:350;">
+  <div class="modal" style="max-height:82vh;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Pick an Emoji</div>
+    <input class="form-input" id="emoji-search-input" placeholder="🔍 Search… e.g. pizza, chicken" style="margin-bottom:10px;" oninput="filterEmojiGrid(this.value)" />
+    <div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;max-height:54vh;overflow-y:auto;padding-bottom:4px;"></div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn btn-secondary" onclick="closeModal('emoji-picker-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD / EDIT RECIPE MODAL -->
 <div class="overlay" id="recipe-edit-overlay">
   <div class="modal" style="max-height:90vh;overflow-y:auto;">
@@ -1115,7 +1136,9 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Emoji</label>
-        <input class="form-input" id="recipe-emoji-input" placeholder="🍽️" style="text-align:center;font-size:1.4rem;" oninput="clampToOneEmoji(this)" />
+        <button type="button" id="recipe-emoji-btn" onclick="openEmojiPicker('recipe')"
+          style="width:100%;height:46px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface2);font-size:1.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color 0.15s;">🍽️</button>
+        <input type="hidden" id="recipe-emoji-input" value="🍽️" />
       </div>
       <div class="form-group">
         <label class="form-label">Cook Time</label>
@@ -1151,8 +1174,8 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     </div>
 
     <div class="btn-row" style="margin-top:22px;">
-      <button class="btn btn-secondary" id="btn-cancel-recipe">Discard</button>
-      <button class="btn btn-danger"    id="btn-delete-recipe" style="display:none;">🗑</button>
+      <button class="btn btn-secondary" id="btn-cancel-recipe">↩ Discard</button>
+      <button class="btn btn-danger"    id="btn-delete-recipe" style="display:none;">🗑 Delete</button>
       <button class="btn btn-primary" style="background:var(--cook-accent);" id="btn-save-recipe">Save Recipe</button>
     </div>
   </div>
@@ -1703,9 +1726,7 @@ async function loadAllData(){
   }
 
   // Load settings UI — settings-currency is rendered dynamically in renderFamilyModal so guard it
-  const currencyEl = document.getElementById('settings-currency');
-  if(currencyEl) currencyEl.value = STATE.currency;
-  document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
+  applyCurrency(STATE.currency);
 
   // Check if family exists and fix any broken numeric-keyed data from array seeding
   const existingRaw = await load('items', null);
@@ -1768,13 +1789,10 @@ async function loadAllData(){
     if(STATE.mode === 'meal') renderMealTab();
   });
   subscribe('familySettings', val => {
-    if(val && val.currency && val.currency !== STATE.currency){
+    if(val && val.currency){
       STATE.currency = val.currency;
-      persistSettings(); // keep localStorage in sync
-      document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
-      const currencyEl = document.getElementById('settings-currency');
-      if(currencyEl) currencyEl.value = STATE.currency;
-      render();
+      persistSettings();
+      applyCurrency(STATE.currency);
     }
   });
   subscribe('mealTemplates', val => {
@@ -1991,12 +2009,23 @@ function hideOnboarding(){
 async function updateCurrency(val){
   STATE.currency = val;
   persistSettings();
-  document.getElementById('price-prefix').textContent = currencySymbol(STATE.currency);
-  // Also save to Firebase so all family members see the same currency
+  applyCurrency(val);
+  // Save to Firebase so all family members share the currency
   if(STATE.familyCode && STATE.familyCode !== 'ADMIN-1337'){
     await save('familySettings', { currency: val });
   }
   render();
+}
+
+// Apply currency to all UI elements — safe to call any time
+function applyCurrency(code){
+  const sym = currencySymbol(code);
+  const prefix = document.getElementById('price-prefix');
+  if(prefix) prefix.textContent = sym;
+  const settingsSel = document.getElementById('settings-currency');
+  if(settingsSel && settingsSel.value !== code) settingsSel.value = code;
+  const onboardSel = document.getElementById('onboard-currency');
+  if(onboardSel && onboardSel.value !== code) onboardSel.value = code;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2037,7 +2066,7 @@ function setMode(m){
   if(addBtn){
     const addCircle=addBtn.querySelector('.nav-add-circle');
     if(addCircle) addCircle.textContent = '＋';
-    const disabled = m==='history'||m==='stores'||m==='admin';
+    const disabled = m==='history'||m==='admin';
     addBtn.style.pointerEvents = disabled?'none':'';
     addBtn.style.opacity = disabled?'0.3':'';
   }
@@ -2230,6 +2259,96 @@ function clampToOneEmoji(input){
     if([...val].length > 2) input.value = [...val].slice(0, 2).join('');
   }
 }
+
+// ── EMOJI PICKER ──────────────────────────────────────────────────────────────
+let _emojiTarget = null; // 'recipe' | 'stored'
+
+const EMOJI_LIST = [
+  // Food & Drink
+  {e:'🍕',k:'pizza'},  {e:'🍔',k:'burger'},  {e:'🌮',k:'taco'},  {e:'🌯',k:'wrap burrito'},
+  {e:'🍣',k:'sushi'},  {e:'🍜',k:'noodle ramen soup'},  {e:'🍝',k:'pasta spaghetti'},
+  {e:'🍛',k:'curry rice'},  {e:'🍲',k:'stew pot soup'},  {e:'🥘',k:'paella pan'},
+  {e:'🫕',k:'fondue pot'},  {e:'🥗',k:'salad'},  {e:'🥙',k:'pita sandwich'},
+  {e:'🥪',k:'sandwich'},  {e:'🌭',k:'hotdog sausage'},
+  {e:'🍟',k:'fries chips'},  {e:'🍳',k:'egg fry pan'},  {e:'🥚',k:'egg'},
+  {e:'🧆',k:'falafel'},  {e:'🥞',k:'pancakes'},  {e:'🧇',k:'waffle'},
+  {e:'🥓',k:'bacon'},  {e:'🥩',k:'steak meat'},  {e:'🍗',k:'chicken leg'},
+  {e:'🍖',k:'meat bone'},  {e:'🌽',k:'corn'},  {e:'🥕',k:'carrot'},
+  {e:'🥦',k:'broccoli'},  {e:'🧄',k:'garlic'},  {e:'🧅',k:'onion'},
+  {e:'🥔',k:'potato'},  {e:'🍅',k:'tomato'},  {e:'🫑',k:'pepper'},
+  {e:'🥑',k:'avocado'},  {e:'🫒',k:'olive'},  {e:'🥬',k:'lettuce'},
+  {e:'🥒',k:'cucumber'},  {e:'🌶',k:'chilli pepper spice'},  {e:'🫚',k:'oil'},
+  {e:'🧀',k:'cheese'},  {e:'🥛',k:'milk'},  {e:'🧈',k:'butter'},
+  {e:'🍳',k:'fry pan'},  {e:'🍞',k:'bread'},  {e:'🥐',k:'croissant'},
+  {e:'🥨',k:'pretzel'},  {e:'🧁',k:'cupcake cake'},  {e:'🎂',k:'birthday cake'},
+  {e:'🍰',k:'cake slice'},  {e:'🍩',k:'doughnut donut'},  {e:'🍪',k:'cookie biscuit'},
+  {e:'🍫',k:'chocolate'},  {e:'🍬',k:'candy sweets'},  {e:'🍭',k:'lollipop'},
+  {e:'🍦',k:'ice cream'},  {e:'🍧',k:'sorbet ice'},  {e:'🍨',k:'ice cream scoop'},
+  {e:'🥧',k:'pie tart'},  {e:'🍮',k:'custard pudding flan'},
+  {e:'🍱',k:'bento box'},  {e:'🍘',k:'rice cracker'},  {e:'🍙',k:'rice ball'},
+  {e:'🥟',k:'dumpling'},  {e:'🥠',k:'fortune cookie'},  {e:'🥡',k:'takeout'},
+  {e:'🍤',k:'shrimp prawn fried'},  {e:'🦐',k:'shrimp'},  {e:'🦞',k:'lobster'},
+  {e:'🦀',k:'crab'},  {e:'🐟',k:'fish'},  {e:'🐠',k:'fish tropical'},
+  // Drinks
+  {e:'☕',k:'coffee'},  {e:'🫖',k:'tea pot'},  {e:'🍵',k:'tea green'},
+  {e:'🧃',k:'juice drink'},  {e:'🥤',k:'soda drink cup'},  {e:'🧋',k:'bubble tea boba'},
+  {e:'🍺',k:'beer'},  {e:'🍻',k:'beers cheers'},  {e:'🍷',k:'wine red'},
+  {e:'🥂',k:'champagne prosecco'},  {e:'🍸',k:'cocktail martini'},  {e:'🍹',k:'tropical drink'},
+  {e:'🧉',k:'mate'},  {e:'🍶',k:'sake'},
+  // Kitchen & Cooking
+  {e:'🍽️',k:'plate cutlery dinner'},  {e:'🥄',k:'spoon'},  {e:'🍴',k:'fork knife cutlery'},
+  {e:'🔪',k:'knife chop'},  {e:'🫙',k:'jar preserve'},  {e:'🥫',k:'can tin'},
+  {e:'🧂',k:'salt shaker'},  {e:'🫗',k:'pour'},
+  {e:'🫙',k:'storage leftovers'},  {e:'🥣',k:'bowl cereal'},
+  {e:'🍽',k:'dinner plate'},
+  // Fruit
+  {e:'🍎',k:'apple red'},  {e:'🍐',k:'pear'},  {e:'🍊',k:'orange tangerine'},
+  {e:'🍋',k:'lemon'},  {e:'🍌',k:'banana'},  {e:'🍉',k:'watermelon'},
+  {e:'🍇',k:'grapes'},  {e:'🍓',k:'strawberry'},  {e:'🫐',k:'blueberry'},
+  {e:'🍈',k:'melon'},  {e:'🍑',k:'peach'},  {e:'🍒',k:'cherry'},
+  {e:'🥭',k:'mango'},  {e:'🍍',k:'pineapple'},  {e:'🥥',k:'coconut'},
+  {e:'🫙',k:'pickle jar'},
+];
+
+function openEmojiPicker(target){
+  _emojiTarget = target;
+  document.getElementById('emoji-search-input').value = '';
+  renderEmojiGrid('');
+  openModal('emoji-picker-overlay');
+  setTimeout(()=>document.getElementById('emoji-search-input').focus(), 300);
+}
+window.openEmojiPicker = openEmojiPicker;
+
+function filterEmojiGrid(q){ renderEmojiGrid(q); }
+window.filterEmojiGrid = filterEmojiGrid;
+
+function renderEmojiGrid(q){
+  const grid = document.getElementById('emoji-grid');
+  const term = q.toLowerCase().trim();
+  const list = term ? EMOJI_LIST.filter(item => item.k.includes(term) || item.e.includes(term)) : EMOJI_LIST;
+  // Dedupe by emoji character
+  const seen = new Set();
+  const unique = list.filter(item => { if(seen.has(item.e)) return false; seen.add(item.e); return true; });
+  if(!unique.length){
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text2);font-size:0.85rem;">No emoji found for "${escHtml(q)}"</div>`;
+    return;
+  }
+  grid.innerHTML = unique.map(item =>
+    `<button class="emoji-btn" onclick="selectEmoji('${item.e}')" title="${item.k}">${item.e}</button>`
+  ).join('');
+}
+
+function selectEmoji(emoji){
+  if(_emojiTarget === 'recipe'){
+    document.getElementById('recipe-emoji-input').value = emoji;
+    document.getElementById('recipe-emoji-btn').textContent = emoji;
+  } else if(_emojiTarget === 'stored'){
+    document.getElementById('stored-emoji-input').value = emoji;
+    document.getElementById('stored-emoji-btn').textContent = emoji;
+  }
+  closeModal('emoji-picker-overlay');
+}
+window.selectEmoji = selectEmoji;
 function formatDate(ts){
   return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
@@ -2723,16 +2842,41 @@ async function searchStoresByText(q){
   resultsEl.style.display='block';
   resultsEl.innerHTML=`<div class="store-search-status">🔍 Searching…</div>`;
   try {
-    // Nominatim geocoding-style search via Overpass for shops matching name
-    const query = `[out:json][timeout:8];
-node["shop"~"${SHOP_TAGS.join('|')}"](if:t["name"])(if:t["name"]~"${q.replace(/"/g,'')}",i);
-out center 15;`;
-    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-    const res = await fetch(url);
+    // Use Nominatim to search for shops/supermarkets by name — far more reliable than raw Overpass text search
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=20&addressdetails=1&extratags=1&featuretype=shop`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
-    renderStoreSearchResults(data.elements||[]);
+    // Filter to shop-like results and map to our format
+    const elements = data
+      .filter(r => r.type === 'shop' || r.class === 'shop' || (r.extratags && r.extratags.shop) || r.category === 'shop')
+      .map(r => ({
+        tags: {
+          name: r.namedetails?.name || r.display_name.split(',')[0],
+          shop: (r.extratags&&r.extratags.shop)||r.type||'shop',
+          'addr:city': r.address?.city||r.address?.town||r.address?.village||'',
+          'addr:street': r.address?.road||'',
+          'addr:housenumber': r.address?.house_number||'',
+        },
+        lat: parseFloat(r.lat), lon: parseFloat(r.lon)
+      }));
+    if(elements.length){
+      renderStoreSearchResults(elements);
+    } else {
+      // Fall back: show all results (not just shops) since user typed a store name
+      const allElements = data.map(r => ({
+        tags: {
+          name: r.display_name.split(',')[0],
+          shop: (r.extratags&&r.extratags.shop)||'shop',
+          'addr:city': r.address?.city||r.address?.town||r.address?.village||'',
+          'addr:street': r.address?.road||'',
+          'addr:housenumber': r.address?.house_number||'',
+        },
+        lat: parseFloat(r.lat), lon: parseFloat(r.lon)
+      }));
+      renderStoreSearchResults(allElements);
+    }
   } catch(e) {
-    resultsEl.innerHTML=`<div class="store-search-status">⚠️ Search failed. Check your connection.</div>`;
+    resultsEl.innerHTML=`<div class="store-search-status">⚠️ Search failed. Try adding the store manually below.</div>`;
   }
 }
 
@@ -2740,27 +2884,46 @@ async function findNearbyStores(){
   const resultsEl = document.getElementById('store-search-results');
   resultsEl.style.display='block';
   resultsEl.innerHTML=`<div class="store-search-status">📍 Getting your location…</div>`;
-  if(!navigator.geolocation){ resultsEl.innerHTML=`<div class="store-search-status">⚠️ Location not available on this device.</div>`; return; }
+  if(!navigator.geolocation){ resultsEl.innerHTML=`<div class="store-search-status">⚠️ Location not available. Search by name or city above.</div>`; return; }
   navigator.geolocation.getCurrentPosition(async pos => {
     const {latitude:lat, longitude:lon} = pos.coords;
     resultsEl.innerHTML=`<div class="store-search-status">🛒 Finding nearby shops…</div>`;
     try {
-      const radius = 2000; // 2km
-      const tagFilter = SHOP_TAGS.map(t=>`["shop"="${t}"]`).join('');
-      const query = `[out:json][timeout:10];
+      const radius = 2500; // 2.5km
+      // Use nwr (node+way+relation) to catch all mapped shop types
+      const query = `[out:json][timeout:15];
 (
-  node["shop"~"${SHOP_TAGS.join('|')}"](around:${radius},${lat},${lon});
+  nwr["shop"~"${SHOP_TAGS.join('|')}"](around:${radius},${lat},${lon});
 );
-out center 30;`;
+out center 40;`;
       const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+      if(!res.ok) throw new Error('Overpass HTTP '+res.status);
       const data = await res.json();
       renderStoreSearchResults(data.elements||[], {lat, lon});
     } catch(e) {
-      resultsEl.innerHTML=`<div class="store-search-status">⚠️ Couldn't load nearby stores. Check your connection.</div>`;
+      // Fallback: use Nominatim reverse + nearby via bbox
+      try {
+        const d = 0.025; // ~2.5km bbox
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=30&addressdetails=1&extratags=1&viewbox=${lon-d},${lat+d},${lon+d},${lat-d}&bounded=1&q=supermarket+shop+store`;
+        const res2 = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+        const data2 = await res2.json();
+        const elements = data2.map(r => ({
+          tags: {
+            name: r.display_name.split(',')[0],
+            shop: (r.extratags&&r.extratags.shop)||'shop',
+            'addr:city': r.address?.city||r.address?.town||r.address?.village||'',
+            'addr:street': r.address?.road||'',
+          },
+          lat: parseFloat(r.lat), lon: parseFloat(r.lon)
+        }));
+        renderStoreSearchResults(elements, {lat, lon});
+      } catch(e2) {
+        resultsEl.innerHTML=`<div class="store-search-status">⚠️ Couldn't find nearby stores. Try searching by name above.</div>`;
+      }
     }
   }, err => {
-    resultsEl.innerHTML=`<div class="store-search-status">⚠️ Location access denied. Try searching by name above.</div>`;
-  }, {timeout:8000, maximumAge:60000});
+    resultsEl.innerHTML=`<div class="store-search-status">⚠️ Location access denied. Search by store name or city above.</div>`;
+  }, {timeout:10000, maximumAge:120000});
 }
 
 function renderStoreSearchResults(elements, userPos){
@@ -3135,7 +3298,9 @@ function openRecipeEdit(id){
   document.getElementById('recipe-edit-title').textContent=r?'Edit Recipe':'New Recipe';
   document.getElementById('recipe-name-input').value=r?r.name:'';
   document.getElementById('recipe-desc-input').value=r?r.description||'':'';
-  document.getElementById('recipe-emoji-input').value=r?r.emoji||'':'';
+  const emojiVal = r?r.emoji||'🍽️':'🍽️';
+  document.getElementById('recipe-emoji-input').value=emojiVal;
+  document.getElementById('recipe-emoji-btn').textContent=emojiVal;
   document.getElementById('recipe-time-input').value=r?r.cookTime||'':'';
   document.getElementById('btn-delete-recipe').style.display=r?'block':'none';
   _recipeIngredients=r?(r.ingredients||[]).map(i=>({...i})):[];
@@ -4106,7 +4271,8 @@ function openAddStoredFood(id){
 
   // Reset form
   document.getElementById('stored-name-input').value = '';
-  document.getElementById('stored-emoji-input').value = '';
+  document.getElementById('stored-emoji-input').value = '🍲';
+  document.getElementById('stored-emoji-btn').textContent = '🍲';
   document.getElementById('stored-notes-input').value = '';
   document.getElementById('stored-custom-days').value = '';
   document.getElementById('stored-custom-date').value = '';
@@ -4121,7 +4287,9 @@ function openAddStoredFood(id){
     const item = STATE.storedFood.find(i=>i.id===id);
     if(item){
       document.getElementById('stored-name-input').value = item.name||'';
-      document.getElementById('stored-emoji-input').value = item.emoji||'';
+      const storedEmoji = item.emoji||'🍲';
+      document.getElementById('stored-emoji-input').value = storedEmoji;
+      document.getElementById('stored-emoji-btn').textContent = storedEmoji;
       document.getElementById('stored-notes-input').value = item.notes||'';
       document.querySelectorAll('#stored-amount-picker .status-option').forEach(el => el.classList.toggle('selected', el.dataset.val===item.amount));
       // Figure out shelf picker value
@@ -4585,6 +4753,7 @@ function bindEvents(){
     'switch-confirm-overlay',
     'add-stored-overlay',
     'stored-detail-overlay',
+    'emoji-picker-overlay',
   ].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.addEventListener('click', e => {
@@ -4626,6 +4795,10 @@ function bindEvents(){
   window.clearExpiredStored      = clearExpiredStored;
   window.updateStoredExpiryPreview = updateStoredExpiryPreview;
   window.toggleCatCollapse       = toggleCatCollapse;
+  window.applyCurrency           = applyCurrency;
+  window.openEmojiPicker         = openEmojiPicker;
+  window.filterEmojiGrid         = filterEmojiGrid;
+  window.selectEmoji             = selectEmoji;
   window.findNearbyStores        = findNearbyStores;
   window.pickSearchedStore       = pickSearchedStore;
   window.onStoreSearchInput      = onStoreSearchInput;
