@@ -621,6 +621,11 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 .pwa-header-btn{background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.35);color:#fff;border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;flex-shrink:0;}
 .pwa-header-btn:hover{background:rgba(255,255,255,0.28);}
 .pwa-header-btn.installed{opacity:0.35;cursor:default;}
+.sync-btn{background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.35);color:#fff;border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;flex-shrink:0;}
+.sync-btn:hover{background:rgba(255,255,255,0.28);}
+#sync-icon{display:inline-block;transition:color 0.3s;line-height:1;}
+.sync-btn.syncing #sync-icon{animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 
 /* ── ADMIN FILTERS ── */
 .admin-filters{background:#1e1e3f;border-radius:var(--radius);padding:14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
@@ -657,6 +662,13 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 <div class="onboard-overlay" id="onboard-overlay">
   <div class="onboard-box">
     <div class="onboard-logo">Our <span>Kitchen</span></div>
+
+    <!-- Recovery banner — shown when app can't find a saved family code -->
+    <div id="onboard-recovery-banner" style="display:none;background:#fff3cd;border:1.5px solid #f0c040;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:0.82rem;color:#5a4200;">
+      <div style="font-weight:700;margin-bottom:4px;">👀 Looks like a fresh start</div>
+      Already have a family kitchen? Enter your family code below and tap <strong>Join</strong> — your data is safe in the cloud.
+    </div>
+
     <div class="onboard-tagline">A shared pantry & shopping tracker<br>for your whole family.</div>
     <div class="onboard-code-display">
       <div class="ocd-label">Your Family Code</div>
@@ -666,7 +678,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <button class="btn btn-primary" id="btn-finish-onboard" style="width:100%;margin-bottom:12px;">Get Started →</button>
     <div class="onboard-or">— or join an existing family —</div>
     <div class="join-row">
-      <input class="form-input" id="join-code-input" placeholder="FAMILY CODE" maxlength="12" />
+      <input class="form-input" id="join-code-input" placeholder="FAMILY CODE" maxlength="12" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
       <button class="btn btn-secondary" id="btn-join-family" style="flex:0;white-space:nowrap;padding:12px 16px;">Join</button>
     </div>
     <div style="margin-top:16px;">
@@ -682,6 +694,7 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
     <div class="logo">Our <span>Kitchen</span></div>
     <div class="header-right">
       <button class="pwa-header-btn" id="btn-pwa-install" title="Add to Home Screen">📲</button>
+      <button class="sync-btn" id="btn-sync" title="Sync now" onclick="manualSync()"><span id="sync-icon">⟳</span></button>
       <div class="family-badge" id="family-badge-btn">👨‍👩‍👧‍👦 ——</div>
     </div>
   </div>
@@ -1363,7 +1376,26 @@ function detachListeners(){
 
 // Settings are device-local (family code, currency preference)
 const SETTINGS_KEY = 'kitchen-settings-v3';
-function loadSettings(){ try{ return JSON.parse(localStorage.getItem(SETTINGS_KEY)); }catch{ return null; } }
+// Migrate from older settings keys so a key version bump never loses the family code
+function loadSettings(){
+  try{
+    const current = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    if(current && current.familyCode) return current;
+    // Try older keys in reverse order
+    for(const oldKey of ['kitchen-settings-v2','kitchen-settings-v1','kitchen-settings']){
+      try{
+        const old = JSON.parse(localStorage.getItem(oldKey));
+        if(old && old.familyCode){
+          // Migrate: save under current key and return
+          saveSettings(old);
+          console.log('[Settings] Migrated from', oldKey);
+          return old;
+        }
+      }catch(e){}
+    }
+    return current; // may be null
+  }catch{ return null; }
+}
 function saveSettings(data){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(data)); }catch(e){} }
 
 // Add or update a family in the saved list, persist immediately
@@ -1690,6 +1722,8 @@ async function init(){
     const code = generateFamilyCode();
     STATE.familyCode = code;
     document.getElementById('onboard-code').textContent = code;
+    // Show the recovery banner — user may have lost their session due to cache clear
+    document.getElementById('onboard-recovery-banner').style.display = 'block';
     detectLocationCurrency();
     document.getElementById('onboard-overlay').style.display='flex';
   }
@@ -1717,6 +1751,7 @@ function detectLocationCurrency(){
 
 async function loadAllData(){
   detachListeners();
+  setSyncState('syncing');
 
   // Fetch family-level currency from Firebase — overrides localStorage default
   const familySettingsSnap = await load('familySettings', null);
@@ -1803,6 +1838,8 @@ async function loadAllData(){
     STATE.storedFood = val ? Object.entries(val).map(([k,s])=>s.id?s:{...s,id:k}) : [];
     if(STATE.mode === 'stored') renderStoredFoodTab();
   });
+  _lastSyncTime = Date.now();
+  setSyncState('ok');
 }
 
 async function finishOnboard(){
@@ -4847,7 +4884,65 @@ function bindEvents(){
   window.closeMoreDrawer         = closeMoreDrawer;
   window.renderFilterBar         = renderFilterBar;
   window.renderHistoryTab        = renderHistoryTab;
+  window.manualSync              = manualSync;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SYNC MANAGEMENT — Re-subscribe when app comes back to foreground
+// ══════════════════════════════════════════════════════════════════════════════
+let _lastSyncTime = 0;
+let _hiddenAt = 0;
+const STALE_THRESHOLD_MS = 3 * 60 * 1000; // re-sync if backgrounded for 3+ minutes
+
+function setSyncState(state){ // 'syncing' | 'ok' | 'error'
+  const btn = document.getElementById('btn-sync');
+  const icon = document.getElementById('sync-icon');
+  if(!btn||!icon) return;
+  btn.classList.remove('syncing');
+  if(state==='syncing'){
+    icon.textContent='⟳';
+    btn.classList.add('syncing');
+    btn.title='Syncing…';
+  } else if(state==='ok'){
+    icon.textContent='✓';
+    btn.title='Synced · tap to refresh';
+    // Revert back to ⟳ after 2s
+    setTimeout(()=>{ icon.textContent='⟳'; btn.title='Tap to sync'; }, 2000);
+  } else {
+    icon.textContent='⟳';
+    btn.title='Tap to sync';
+  }
+}
+
+async function manualSync(){
+  if(!STATE.familyCode) return;
+  setSyncState('syncing');
+  try {
+    await loadAllData();
+    _lastSyncTime = Date.now();
+    setSyncState('ok');
+    showToast('✅ Synced with Firebase');
+  } catch(e) {
+    setSyncState('error');
+    showToast('⚠️ Sync failed — check your connection');
+  }
+}
+
+// Re-sync automatically when the tab/app becomes visible again after being backgrounded
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){
+    _hiddenAt = Date.now();
+  } else {
+    const awayMs = Date.now() - _hiddenAt;
+    if(_hiddenAt > 0 && awayMs > STALE_THRESHOLD_MS && STATE.familyCode){
+      setSyncState('syncing');
+      loadAllData().then(() => {
+        _lastSyncTime = Date.now();
+        setSyncState('ok');
+      }).catch(() => setSyncState('error'));
+    }
+  }
+});
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PWA INSTALL
