@@ -1057,6 +1057,57 @@ window.addEventListener('unhandledrejection', function(e){
 </div>
 
 <!-- STORE PICKER (in shopping mode) -->
+<!-- COOK ADD ACTION SHEET -->
+<div class="overlay" id="cook-add-sheet-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Recipe</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin:8px 0 4px;">
+      <button onclick="closeModal('cook-add-sheet-overlay');openScanRecipe();"
+        style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--cook-light);border:1.5px solid var(--cook-accent);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.8rem;">📷</span>
+        <div>
+          <div style="font-weight:700;color:var(--cook-accent);font-size:0.95rem;">Scan a Recipe</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;">Photo, screenshot or handwritten notes</div>
+        </div>
+      </button>
+      <button onclick="closeModal('cook-add-sheet-overlay');openRecipeEdit(null);"
+        style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.8rem;">✏️</span>
+        <div>
+          <div style="font-weight:700;font-size:0.95rem;">Write Manually</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;">Enter ingredients and steps yourself</div>
+        </div>
+      </button>
+    </div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn btn-secondary" onclick="closeModal('cook-add-sheet-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY PROMPT MODAL -->
+<div class="overlay" id="api-key-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔑 Anthropic API Key</div>
+    <div class="modal-sub">Required once to enable recipe scanning. Stored only on this device.</div>
+    <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--text2);margin-bottom:14px;line-height:1.5;">
+      Get a free key at <strong style="color:var(--accent);">console.anthropic.com</strong> → API Keys.<br>
+      It stays on your device only — never sent to Firebase or shared.
+    </div>
+    <div class="form-group">
+      <label class="form-label">API Key</label>
+      <input class="form-input" id="api-key-input" type="password" placeholder="sk-ant-…" autocomplete="off" />
+    </div>
+    <div id="api-key-error" style="display:none;font-size:0.78rem;color:var(--out);margin-bottom:8px;"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('api-key-overlay')">Cancel</button>
+      <button class="btn btn-primary" style="background:var(--cook-accent);" onclick="saveApiKey()">Save &amp; Scan</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="store-pick-overlay">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -1280,8 +1331,9 @@ window.addEventListener('unhandledrejection', function(e){
         </div>
       </div>
 
-      <div id="scan-hint" style="font-size:0.8rem;color:var(--text2);background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:14px;">
+      <div id="scan-hint" style="font-size:0.8rem;color:var(--text2);background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.5;">
         💡 Works best with <strong>clear lighting</strong> and the full recipe in frame. Handwritten notes work too — just make sure the text is legible.
+        <div style="margin-top:6px;"><a href="#" onclick="event.preventDefault();clearApiKey();closeModal('scan-recipe-overlay');" style="color:var(--accent);font-size:0.75rem;">🔑 Clear saved API key</a></div>
       </div>
 
       <div class="btn-row">
@@ -2316,7 +2368,7 @@ function closeMoreDrawer(){
 
 function handleMainAdd(){
   if(STATE.mode==='stores')        openAddStore();
-  else if(STATE.mode==='cook')     openRecipeEdit(null);
+  else if(STATE.mode==='cook')     openModal('cook-add-sheet-overlay');
   else if(STATE.mode==='meal')     openMealQuickAdd();
   else if(STATE.mode==='stored')   openAddStoredFood(null);
   else                             openAddModal();
@@ -2579,6 +2631,28 @@ function selectEmoji(emoji){
 }
 window.selectEmoji = selectEmoji;
 
+// ── API KEY MANAGEMENT ───────────────────────────────────────────────────────
+function getApiKey(){ return localStorage.getItem('ok-anthropic-key')||''; }
+function saveApiKey(){
+  const key = document.getElementById('api-key-input').value.trim();
+  const errEl = document.getElementById('api-key-error');
+  if(!key.startsWith('sk-ant-') && !key.startsWith('sk-')){
+    errEl.textContent = 'That doesn\'t look like a valid key (should start with sk-ant-…)';
+    errEl.style.display='block'; return;
+  }
+  errEl.style.display='none';
+  localStorage.setItem('ok-anthropic-key', key);
+  closeModal('api-key-overlay');
+  _proceedWithScan();
+}
+window.saveApiKey = saveApiKey;
+
+function clearApiKey(){
+  localStorage.removeItem('ok-anthropic-key');
+  showToast('API key cleared.');
+}
+window.clearApiKey = clearApiKey;
+
 // ── RECIPE OCR / SCAN ─────────────────────────────────────────────────────────
 let _scanImageBase64 = null;
 let _scanImageMime   = null;
@@ -2588,13 +2662,27 @@ function openScanRecipe(){
   _scanImageBase64 = null;
   _scanImageMime   = null;
   _scanResult      = null;
+  // Check for API key first
+  if(!getApiKey()){
+    document.getElementById('api-key-input').value='';
+    document.getElementById('api-key-error').style.display='none';
+    openModal('api-key-overlay');
+    return;
+  }
+  _proceedWithScan();
+}
+window.openScanRecipe = openScanRecipe;
+
+function _proceedWithScan(){
+  _scanImageBase64 = null;
+  _scanImageMime   = null;
+  _scanResult      = null;
   document.getElementById('scan-file-input').value = '';
   document.getElementById('scan-preview-wrap').style.display = 'none';
   document.getElementById('btn-scan-extract').disabled = true;
   showScanStep('upload');
   openModal('scan-recipe-overlay');
 }
-window.openScanRecipe = openScanRecipe;
 
 function showScanStep(step){
   ['upload','processing','review'].forEach(s =>
@@ -2663,11 +2751,18 @@ Rules:
   ];
 
   try {
+    const apiKey = getApiKey();
+    if(!apiKey){ showScanStep('upload'); showToast('No API key set — tap Scan again to add one.'); return; }
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-opus-4-6',
         max_tokens: 2000,
         messages
       })
@@ -5341,6 +5436,8 @@ function bindEvents(){
     'stored-detail-overlay',
     'emoji-picker-overlay',
     'scan-recipe-overlay',
+    'cook-add-sheet-overlay',
+    'api-key-overlay',
   ].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.addEventListener('click', e => {
