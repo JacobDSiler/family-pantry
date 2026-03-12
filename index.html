@@ -1057,30 +1057,6 @@ window.addEventListener('unhandledrejection', function(e){
 </div>
 
 <!-- STORE PICKER (in shopping mode) -->
-<!-- HERE PLACES API KEY MODAL -->
-<div class="overlay" id="here-key-overlay">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title">🗺️ HERE API Key</div>
-    <div class="modal-sub">Required once to enable store search. Free, stored on this device only.</div>
-    <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--text2);margin-bottom:14px;line-height:1.6;">
-      1. Go to <strong style="color:var(--stores-accent);">developer.here.com</strong><br>
-      2. Sign up free → Create a project → API Keys<br>
-      3. Copy the key and paste it below.<br>
-      Free tier: 250,000 requests/month.
-    </div>
-    <div class="form-group">
-      <label class="form-label">HERE API Key</label>
-      <input class="form-input" id="here-key-input" type="password" placeholder="Paste your HERE API key…" autocomplete="off" />
-    </div>
-    <div id="here-key-error" style="display:none;font-size:0.78rem;color:var(--out);margin-bottom:8px;"></div>
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeModal('here-key-overlay')">Cancel</button>
-      <button class="btn btn-primary" style="background:var(--stores-accent);" onclick="saveHereKey()">Save &amp; Search</button>
-    </div>
-  </div>
-</div>
-
 <!-- GEMINI API KEY MODAL -->
 <div class="overlay" id="gemini-key-overlay">
   <div class="modal">
@@ -2661,25 +2637,6 @@ window.selectEmoji = selectEmoji;
 // ── API KEY MANAGEMENT ───────────────────────────────────────────────────────
 // Removed: Anthropic OCR key (replaced by Gemini below)
 
-// HERE Places API key
-function getHereKey(){ return localStorage.getItem('ok-here-key')||''; }
-function saveHereKey(){
-  const key = (document.getElementById('here-key-input')||{}).value?.trim()||'';
-  const errEl = document.getElementById('here-key-error');
-  if(key.length < 10){
-    if(errEl){ errEl.textContent='That doesn\'t look like a valid HERE API key.'; errEl.style.display='block'; }
-    return;
-  }
-  if(errEl) errEl.style.display='none';
-  localStorage.setItem('ok-here-key', key);
-  closeModal('here-key-overlay');
-  if(_pendingNearby){ _pendingNearby(); _pendingNearby=null; }
-}
-window.saveHereKey = saveHereKey;
-function clearHereKey(){ localStorage.removeItem('ok-here-key'); showToast('HERE API key cleared.'); }
-window.clearHereKey = clearHereKey;
-let _pendingNearby = null;
-
 // Gemini API key (for recipe OCR)
 function getGeminiKey(){ return localStorage.getItem('ok-gemini-key')||''; }
 function saveGeminiKey(){
@@ -2793,7 +2750,7 @@ Rules:
     };
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
       { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }
     );
 
@@ -3487,76 +3444,64 @@ function onStoreSearchInput(){
   _storeSearchTimer = setTimeout(() => searchStoresByText(q), 450);
 }
 
-// ── STORE SEARCH — HERE Places ─────────────────────────────────────────────
-// HERE Geocoding & Search API v1 — free tier (250k requests/month), CORS-enabled.
-// Get a free API key at developer.here.com → Projects → API Keys.
+// ── STORE SEARCH — Foursquare Places ──────────────────────────────────────────
+// Foursquare Places API v3 — CORS-enabled, works internationally including Ireland.
+// Key is baked in — users don't need to sign up for anything.
+const FSQ_KEY = 'TCZVW0DNZAVF1EFO05SU4LORZMXOERH3VCWPQ1H411DXYYEN';
+const FSQ_HEADERS = { 'Authorization': FSQ_KEY, 'Accept': 'application/json' };
 
-async function hereSearch(query, lat, lon){
-  const key = getHereKey();
-  if(!key) return null;
-  try {
-    let url = `https://discover.search.hereapi.com/v1/discover?q=${encodeURIComponent(query)}&limit=20&apiKey=${key}`;
-    if(lat != null) url += `&at=${lat},${lon}`;
-    const res = await fetch(url, {signal: AbortSignal.timeout(10000)});
-    if(!res.ok){
-      const err = await res.json().catch(()=>({}));
-      return {error: res.status, msg: err.title || 'HERE API error'};
-    }
-    return await res.json();
-  } catch(e){ return null; }
-}
+// Category IDs: supermarkets, convenience, fuel, pharmacies, department stores
+const FSQ_CATS = '17069,17070,17071,17072,17077,17079,17080,16002,16026';
 
-async function hereNearby(lat, lon){
-  const key = getHereKey();
-  if(!key) return null;
-  try {
-    // Browse by food/grocery/fuel categories near a point
-    const cats = '700-703,700-705,700-706,700-710,700-711,700-717,700-900';
-    const url = `https://browse.search.hereapi.com/v1/browse?at=${lat},${lon}&categories=${cats}&limit=30&apiKey=${key}`;
-    const res = await fetch(url, {signal: AbortSignal.timeout(10000)});
-    if(!res.ok){
-      const err = await res.json().catch(()=>({}));
-      return {error: res.status, msg: err.title || 'HERE API error'};
-    }
-    return await res.json();
-  } catch(e){ return null; }
-}
-
-function hereCategory(catId, name){
+function fsqCategory(cats, name){
   const n = (name||'').toLowerCase();
-  if(/tesco|supervalu|dunnes|aldi|lidl|centra|spar|mace|superquinn|eurospar|fresh/.test(n)) return 'supermarket';
+  if(/tesco|supervalu|dunnes|aldi|lidl|centra|spar|mace|eurospar|superquinn|fresh/.test(n)) return 'supermarket';
   if(/petrol|fuel|esso|applegreen|circle k|texaco|topaz|maxol/.test(n)) return 'fuel';
   if(/pharmacy|chemist|boots|lloyds/.test(n)) return 'pharmacy';
-  if(catId.startsWith('700-703')) return 'supermarket';
-  if(catId.startsWith('700-705')) return 'convenience';
-  if(catId.startsWith('700-717')) return 'fuel';
-  if(catId.startsWith('700-711')) return 'pharmacy';
-  if(catId.startsWith('700-706')||catId.startsWith('700-900')) return 'department_store';
+  const id = (cats||[])[0]?.id || 0;
+  if([17069,17070,17071,17072,17077].includes(id)) return 'supermarket';
+  if([17079,17080].includes(id)) return 'convenience';
+  if(id === 16026) return 'fuel';
+  if(id === 16002) return 'pharmacy';
   return 'shop';
 }
 
-function renderHereResults(items, userPos){
+async function fsqNearby(lat, lon){
+  try {
+    const url = `https://api.foursquare.com/v3/places/nearby?ll=${lat},${lon}&categories=${FSQ_CATS}&limit=30&fields=name,categories,location,distance`;
+    const res = await fetch(url, { headers: FSQ_HEADERS, signal: AbortSignal.timeout(10000) });
+    if(!res.ok) return null;
+    return await res.json();
+  } catch(e){ return null; }
+}
+
+async function fsqSearch(query, lat, lon){
+  try {
+    let url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(query)}&categories=${FSQ_CATS}&limit=20&fields=name,categories,location,distance`;
+    if(lat != null) url += `&ll=${lat},${lon}`;
+    const res = await fetch(url, { headers: FSQ_HEADERS, signal: AbortSignal.timeout(10000) });
+    if(!res.ok) return null;
+    return await res.json();
+  } catch(e){ return null; }
+}
+
+function renderFsqResults(results, userPos){
   const resultsEl = document.getElementById('store-search-results');
-  if(!items || !items.length){
+  if(!results || !results.length){
     resultsEl.innerHTML = `<div class="store-search-status">No shops found nearby. Try a different search or add manually.</div>`;
     return;
   }
-  resultsEl.innerHTML = items.slice(0, 25).map(item => {
-    const name = item.title || 'Unnamed';
-    const addr = item.address || {};
-    const city = addr.city || addr.county || addr.district || '';
-    const street = addr.street ? ((addr.houseNumber||'')+' '+addr.street).trim() : '';
+  resultsEl.innerHTML = results.slice(0, 25).map(place => {
+    const name = place.name || 'Unnamed';
+    const loc = place.location || {};
+    const city = loc.locality || loc.region || loc.country || '';
+    const street = loc.address || '';
     const addrStr = [street, city].filter(Boolean).join(', ');
-    const catId = (item.categories||[])[0]?.id || '';
-    const shopType = hereCategory(catId, name);
+    const shopType = fsqCategory(place.categories, name);
     const emoji = SHOP_EMOJI[shopType] || '🏪';
     let distStr = '';
-    if(userPos && item.position){
-      const dx = Math.hypot(
-        (item.position.lat - userPos.lat)*111320,
-        (item.position.lng - userPos.lon)*111320*Math.cos(userPos.lat*Math.PI/180)
-      );
-      distStr = dx < 1000 ? Math.round(dx)+'m' : (dx/1000).toFixed(1)+'km';
+    if(place.distance != null){
+      distStr = place.distance < 1000 ? place.distance+'m' : (place.distance/1000).toFixed(1)+'km';
     }
     return `<div class="store-result-item" onclick="pickSearchedStore('${escHtml(name)}','${escHtml(city||addrStr)}','${escHtml(shopType)}')">
       <div class="store-result-icon">${emoji}</div>
@@ -3568,28 +3513,14 @@ function renderHereResults(items, userPos){
   }).join('');
 }
 
-function requireHereKey(thenFn){
-  if(getHereKey()){ thenFn(); return; }
-  _pendingNearby = thenFn;
-  document.getElementById('here-key-input').value='';
-  document.getElementById('here-key-error').style.display='none';
-  openModal('here-key-overlay');
-}
-
 async function searchStoresByText(q){
   const resultsEl = document.getElementById('store-search-results');
   resultsEl.style.display = 'block';
-  resultsEl.innerHTML = `<div class="store-search-status">🔍 Searching…</div>`;
-  requireHereKey(async () => {
-    resultsEl.style.display = 'block';
-    resultsEl.innerHTML = `<div class="store-search-status">🔍 Searching for "${escHtml(q)}"…</div>`;
-    const data = await hereSearch(q);
-    if(!data){ resultsEl.innerHTML=`<div class="store-search-status">⚠️ Search failed — check connection.</div>`; return; }
-    if(data.error === 401){ clearHereKey(); resultsEl.innerHTML=`<div class="store-search-status">⚠️ Invalid HERE key. <a href="#" onclick="openModal('here-key-overlay')">Re-enter it</a>.</div>`; return; }
-    if(data.error){ resultsEl.innerHTML=`<div class="store-search-status">⚠️ ${escHtml(data.msg)}</div>`; return; }
-    if(data.items && data.items.length) renderHereResults(data.items, null);
-    else resultsEl.innerHTML=`<div class="store-search-status">No results for "${escHtml(q)}". Try a town name or store name.</div>`;
-  });
+  resultsEl.innerHTML = `<div class="store-search-status">🔍 Searching for "${escHtml(q)}"…</div>`;
+  const data = await fsqSearch(q);
+  if(!data || !data.results){ resultsEl.innerHTML=`<div class="store-search-status">⚠️ Search failed — check connection and try again.</div>`; return; }
+  if(data.results.length) renderFsqResults(data.results, null);
+  else resultsEl.innerHTML=`<div class="store-search-status">No results for "${escHtml(q)}". Try a town name or store name.</div>`;
 }
 
 async function findNearbyStores(){
@@ -3599,24 +3530,20 @@ async function findNearbyStores(){
   if(!navigator.geolocation){
     resultsEl.innerHTML=`<div class="store-search-status">⚠️ Location not available on this device.</div>`; return;
   }
-  requireHereKey(() => {
-    navigator.geolocation.getCurrentPosition(async pos => {
-      const {latitude:lat, longitude:lon} = pos.coords;
-      const userPos = {lat, lon};
-      resultsEl.style.display='block';
-      resultsEl.innerHTML=`<div class="store-search-status">🛒 Finding nearby shops…</div>`;
-      let data = await hereNearby(lat, lon);
-      if(data && data.error === 401){ clearHereKey(); resultsEl.innerHTML=`<div class="store-search-status">⚠️ Invalid HERE key. <a href="#" onclick="openModal('here-key-overlay')">Re-enter it</a>.</div>`; return; }
-      if(!data || !data.items || !data.items.length){
-        // Fallback: keyword search near coords
-        data = await hereSearch('supermarket grocery convenience shop', lat, lon);
-      }
-      if(data && data.items && data.items.length) renderHereResults(data.items, userPos);
-      else resultsEl.innerHTML=`<div class="store-search-status">No shops found nearby. Try searching by name above.</div>`;
-    }, () => {
-      resultsEl.innerHTML=`<div class="store-search-status">⚠️ Location access denied. Search by town name above.</div>`;
-    }, {timeout:10000, maximumAge:120000});
-  });
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const {latitude:lat, longitude:lon} = pos.coords;
+    const userPos = {lat, lon};
+    resultsEl.style.display='block';
+    resultsEl.innerHTML=`<div class="store-search-status">🛒 Finding nearby shops…</div>`;
+    let data = await fsqNearby(lat, lon);
+    if(!data || !data.results || !data.results.length){
+      data = await fsqSearch('supermarket grocery convenience', lat, lon);
+    }
+    if(data && data.results && data.results.length) renderFsqResults(data.results, userPos);
+    else resultsEl.innerHTML=`<div class="store-search-status">No shops found nearby. Try searching by name above.</div>`;
+  }, () => {
+    resultsEl.innerHTML=`<div class="store-search-status">⚠️ Location access denied. Search by town name above.</div>`;
+  }, {timeout:10000, maximumAge:120000});
 }
 
 function pickSearchedStore(name, city, type){
@@ -5416,7 +5343,6 @@ function bindEvents(){
     'emoji-picker-overlay',
     'scan-recipe-overlay',
     'cook-add-sheet-overlay',
-    'here-key-overlay',
     'gemini-key-overlay',
   ].forEach(id => {
     const el = document.getElementById(id);
