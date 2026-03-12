@@ -1339,6 +1339,8 @@ window.addEventListener('unhandledrejection', function(e){
         <div style="margin-top:6px;"><a href="#" onclick="event.preventDefault();clearGeminiKey();closeModal('scan-recipe-overlay');" style="color:var(--accent);font-size:0.75rem;">🔑 Clear saved Gemini key</a></div>
       </div>
 
+      <div id="scan-ocr-error" style="display:none;background:#fff3f3;border:1.5px solid var(--out);border-radius:10px;padding:10px 12px;font-size:0.8rem;color:var(--out);margin-bottom:10px;line-height:1.5;word-break:break-word;"></div>
+
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="closeModal('scan-recipe-overlay')">Cancel</button>
         <button class="btn btn-primary" id="btn-scan-extract" style="background:var(--cook-accent);" onclick="runRecipeOCR()" disabled>
@@ -2680,6 +2682,9 @@ function _proceedWithScan(){
   _scanResult      = null;
   document.getElementById('scan-file-input').value = '';
   document.getElementById('scan-preview-wrap').style.display = 'none';
+  // Clear previous error
+  const errBanner = document.getElementById('scan-ocr-error');
+  if(errBanner){ errBanner.style.display='none'; errBanner.textContent=''; }
   document.getElementById('btn-scan-extract').disabled = true;
   showScanStep('upload');
   openModal('scan-recipe-overlay');
@@ -2756,11 +2761,16 @@ Rules:
 
     if(!response.ok){
       const err = await response.json().catch(()=>({}));
-      if(response.status === 400 && err.error?.message?.includes('API_KEY')){
+      const msg = err.error?.message || ('HTTP ' + response.status);
+      const status = response.status;
+      // Only clear key on genuine auth errors
+      if(status === 401 || (status === 400 && /API.KEY|api.key|invalid.*key/i.test(msg))){
         clearGeminiKey();
         throw new Error('Invalid Gemini API key — tap Scan to re-enter it.');
       }
-      throw new Error(err.error?.message || 'Gemini API error ' + response.status);
+      if(status === 429) throw new Error('Gemini quota exceeded — free tier limit reached. Try again later.');
+      if(status === 403) throw new Error('Gemini key not enabled for this API. In Google AI Studio: make sure the key has Generative Language API access. (' + msg + ')');
+      throw new Error('Gemini error ' + status + ': ' + msg);
     }
 
     const data = await response.json();
@@ -2776,7 +2786,11 @@ Rules:
 
   } catch(e){
     showScanStep('upload');
-    showToast('⚠️ Extraction failed: ' + (e.message||'unknown error'));
+    const errMsg = e.message || 'Unknown error';
+    // Show persistent error above the button so it can be read
+    const errBanner = document.getElementById('scan-ocr-error');
+    if(errBanner){ errBanner.textContent = '⚠️ ' + errMsg; errBanner.style.display='block'; }
+    showToast('⚠️ ' + errMsg);
     console.error('OCR error:', e);
   }
 }
@@ -3447,7 +3461,7 @@ function onStoreSearchInput(){
 // ── STORE SEARCH — Foursquare Places ──────────────────────────────────────────
 // Foursquare Places API v3 — CORS-enabled, works internationally including Ireland.
 // Key is baked in — users don't need to sign up for anything.
-const FSQ_KEY = 'AIzaSyDmqRG6db-EECT4ag9XV6_-mAEWGzRl9Eo';
+const FSQ_KEY = 'TCZVW0DNZAVF1EFO05SU4LORZMXOERH3VCWPQ1H411DXYYEN';
 const FSQ_HEADERS = { 'Authorization': FSQ_KEY, 'Accept': 'application/json' };
 
 // Category IDs: supermarkets, convenience, fuel, pharmacies, department stores
