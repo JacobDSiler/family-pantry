@@ -29,6 +29,7 @@
   --cook-bg: #fdf6ee; --cook-accent: #b5451b; --cook-light: #fff3ec;
   --stored-bg: #f2f8f5; --stored-accent: #2a7d5a; --stored-light: #e4f5ed;
   --stored-warn: #d4860a; --stored-expired: #c8521a;
+  --feed-bg: #f7f5fb; --feed-accent: #7c3aed; --feed-light: #f0ebff;
   --shadow: 0 2px 12px rgba(44,36,22,0.08); --radius: 14px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -88,6 +89,36 @@ body.mode-meal     .bottom-nav-item.active{color:var(--meal-accent);}
 body.mode-meal     .bottom-nav-item.active::before{background:var(--meal-accent);}
 body.mode-stored   .bottom-nav-item.active{color:var(--stored-accent);}
 body.mode-stored   .bottom-nav-item.active::before{background:var(--stored-accent);}
+body.mode-feed     .bottom-nav-item.active{color:var(--feed-accent);}
+body.mode-feed     .bottom-nav-item.active::before{background:var(--feed-accent);}
+body.mode-feed{background:var(--feed-bg);}
+body.mode-feed header{background:var(--feed-accent);border-bottom-color:transparent;}
+body.mode-feed .logo,body.mode-feed .logo span{color:#fff;}
+body.mode-feed .family-badge{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.3);color:#fff;}
+
+/* ── FEED TAB ── */
+.feed-list{display:flex;flex-direction:column;gap:12px;padding:4px 0 16px;}
+.feed-card{background:var(--surface);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;cursor:default;}
+.feed-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px;}
+.feed-card.fc-alert::before{background:#e53e3e;}
+.feed-card.fc-meal::before{background:var(--cook-accent);}
+.feed-card.fc-shop::before{background:var(--shop-accent);}
+.feed-card.fc-pantry::before{background:var(--accent);}
+.feed-card.fc-habit::before{background:var(--feed-accent);}
+.feed-card.fc-tip::before{background:var(--stores-accent);}
+.feed-card.fc-insight::before{background:var(--hist-accent);}
+.feed-card.fc-update::before{background:#d69e2e;}
+.feed-card-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;}
+.feed-card-icon{font-size:1.5rem;line-height:1;flex-shrink:0;margin-top:1px;}
+.feed-card-title{font-family:'Fraunces',serif;font-size:0.98rem;font-weight:600;color:var(--text);line-height:1.3;}
+.feed-card-body{font-size:0.83rem;color:var(--text2);line-height:1.55;margin-left:36px;}
+.feed-card-action{display:inline-block;margin-top:8px;font-size:0.8rem;font-weight:600;color:var(--feed-accent);background:var(--feed-light);padding:5px 12px;border-radius:20px;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;}
+.feed-card-time{font-size:0.72rem;color:var(--text2);margin-top:8px;margin-left:36px;opacity:0.7;}
+.feed-more-links{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.feed-more-link{flex:1;min-width:0;background:var(--surface);border-radius:12px;padding:10px 12px;text-align:center;cursor:pointer;border:1.5px solid var(--border);font-size:0.75rem;font-weight:600;color:var(--text2);}
+.feed-more-link:active{opacity:0.7;}
+.feed-more-link .fml-icon{font-size:1.3rem;display:block;margin-bottom:3px;}
+.feed-section-label{font-size:0.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--feed-accent);margin:16px 0 8px;opacity:0.7;}
 body.mode-stored{background:var(--stored-bg);}
 body.mode-stored header{background:var(--stored-accent);border-bottom-color:transparent;}
 body.mode-stored .logo{color:#fff;}
@@ -102,7 +133,8 @@ body.mode-stored .bottom-nav-add .nav-add-circle{background:var(--stored-accent)
 body.mode-shopping .bottom-nav-add .nav-add-circle{background:var(--shop-accent);box-shadow:0 4px 14px rgba(74,142,96,0.4);}
 body.mode-cook     .bottom-nav-add .nav-add-circle{background:var(--cook-accent);box-shadow:0 4px 14px rgba(181,69,27,0.4);}
 body.mode-meal     .bottom-nav-add .nav-add-circle{background:var(--meal-accent);box-shadow:0 4px 14px rgba(61,82,160,0.4);}
-body.mode-history  .bottom-nav-add,.body.mode-stores .bottom-nav-add{pointer-events:none;opacity:0.35;}
+body.mode-history  .bottom-nav-add .nav-add-circle{background:var(--hist-accent);box-shadow:0 4px 14px rgba(100,60,170,0.4);}
+.body.mode-stores .bottom-nav-add{pointer-events:none;opacity:0.35;}
 body.mode-admin    .bottom-nav-add{pointer-events:none;opacity:0.25;}
 
 /* More drawer */
@@ -755,8 +787,8 @@ window.addEventListener('unhandledrejection', function(e){
   <button class="bottom-nav-item" id="tab-meal">
     <span class="nav-icon">📅</span>Meals
   </button>
-  <button class="bottom-nav-item" id="tab-more">
-    <span class="nav-icon">···</span>More
+  <button class="bottom-nav-item" id="tab-feed">
+    <span class="nav-icon">✨</span>Feed
   </button>
 </nav>
 
@@ -1057,30 +1089,6 @@ window.addEventListener('unhandledrejection', function(e){
 </div>
 
 <!-- STORE PICKER (in shopping mode) -->
-<!-- GEMINI API KEY MODAL -->
-<div class="overlay" id="gemini-key-overlay">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title">🤖 Gemini API Key</div>
-    <div class="modal-sub">Required once to enable recipe scanning. Free, stored on this device only.</div>
-    <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--text2);margin-bottom:14px;line-height:1.6;">
-      1. Go to <strong style="color:var(--cook-accent);">aistudio.google.com</strong><br>
-      2. Sign in with Google → Get API Key → Create API key<br>
-      3. Copy the key and paste it below.<br>
-      Free tier: 1,500 requests/day — no credit card needed.
-    </div>
-    <div class="form-group">
-      <label class="form-label">Gemini API Key</label>
-      <input class="form-input" id="gemini-key-input" type="password" placeholder="Paste your Gemini API key…" autocomplete="off" />
-    </div>
-    <div id="gemini-key-error" style="display:none;font-size:0.78rem;color:var(--out);margin-bottom:8px;"></div>
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeModal('gemini-key-overlay')">Cancel</button>
-      <button class="btn btn-primary" style="background:var(--cook-accent);" onclick="saveGeminiKey()">Save &amp; Scan</button>
-    </div>
-  </div>
-</div>
-
 <!-- COOK ADD ACTION SHEET -->
 <div class="overlay" id="cook-add-sheet-overlay">
   <div class="modal">
@@ -1194,6 +1202,111 @@ window.addEventListener('unhandledrejection', function(e){
       <button class="btn btn-secondary" id="btn-cancel-log">Cancel</button>
       <button class="btn btn-green"     id="btn-save-log">Save Shop Log</button>
     </div>
+  </div>
+</div>
+
+<!-- MANUAL SHOP LOG MODAL (from + button in history) -->
+<div class="overlay" id="manual-log-overlay">
+  <div class="modal" style="max-height:88vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📋 Log a Shop</div>
+    <div class="modal-sub">Record a past or current shopping trip.</div>
+
+    <div class="form-row">
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Store</label>
+        <select class="form-input" id="mlog-store-select">
+          <option value="">— No store —</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="mlog-date" />
+      </div>
+    </div>
+
+    <!-- Receipt scan entry point -->
+    <div style="margin-bottom:12px;">
+      <button class="btn" onclick="openReceiptScan('__new__')" style="width:100%;background:var(--hist-accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:12px;font-size:0.88rem;font-weight:600;border:none;cursor:pointer;">
+        📷 Scan Receipt to fill in automatically
+      </button>
+      <div style="text-align:center;color:var(--text2);font-size:0.72rem;margin-top:6px;">— or fill in manually below —</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Items (optional)</label>
+      <div id="mlog-items-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+      <button class="btn btn-secondary" style="font-size:0.8rem;padding:8px 12px;" onclick="addMlogItem()">＋ Add Item</button>
+    </div>
+
+    <div class="log-total-row">
+      <div>
+        <div class="ltr-label">Total Spent</div>
+        <div style="font-size:0.72rem;color:var(--text2);">Calculated or override</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="mlog-total-calc" class="ltr-amount">—</span>
+        <div class="currency-prefix" style="width:110px;">
+          <span class="prefix" id="mlog-currency-prefix">€</span>
+          <input class="form-input" id="mlog-total-override" type="number" min="0" step="0.01" placeholder="override" style="border-radius:0 10px 10px 0;padding:8px 10px;font-size:0.85rem;" oninput="recalcMlogTotal()" />
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:4px;">
+      <button class="btn btn-secondary" onclick="closeModal('manual-log-overlay')">Cancel</button>
+      <button class="btn btn-green" onclick="saveManualLog()">Save Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT SCAN MODAL -->
+<div class="overlay" id="receipt-scan-overlay">
+  <div class="modal" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🧾 Scan Receipt</div>
+
+    <!-- Step 1: Upload -->
+    <div id="rscan-step-upload">
+      <div class="modal-sub">Photo or screenshot of your receipt — full receipt in frame.</div>
+      <div id="rscan-drop-zone" onclick="document.getElementById('rscan-file-input').click()"
+        style="border:2px dashed var(--hist-accent);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:#f5f0ff;margin-bottom:14px;">
+        <div style="font-size:2.5rem;margin-bottom:8px;">🧾</div>
+        <div style="font-family:'Fraunces',serif;font-size:1rem;color:var(--hist-accent);font-weight:700;">Tap to choose image</div>
+        <div style="font-size:0.78rem;color:var(--text2);margin-top:4px;">JPG, PNG, WEBP</div>
+      </div>
+      <input type="file" id="rscan-file-input" accept="image/*" style="display:none;" onchange="onReceiptFileChosen(event)" />
+      <div id="rscan-preview-wrap" style="display:none;margin-bottom:14px;">
+        <img id="rscan-preview-img" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;border:1.5px solid var(--border);" />
+        <button class="btn btn-secondary" style="margin-top:8px;font-size:0.8rem;padding:8px 14px;" onclick="document.getElementById('rscan-file-input').click()">Change image</button>
+      </div>
+      <div id="rscan-error" style="display:none;background:#fff3f3;border:1.5px solid var(--out);border-radius:10px;padding:10px 12px;font-size:0.8rem;color:var(--out);margin-bottom:10px;line-height:1.5;word-break:break-word;"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="closeModal('receipt-scan-overlay')">Cancel</button>
+        <button class="btn btn-primary" id="btn-rscan-extract" style="background:var(--hist-accent);" onclick="runReceiptOCR()" disabled>🧾 Extract Receipt</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Processing -->
+    <div id="rscan-step-processing" style="display:none;text-align:center;padding:20px 0;">
+      <div style="font-size:3rem;margin-bottom:16px;">🔍</div>
+      <div style="font-family:'Fraunces',serif;font-size:1.1rem;font-weight:600;margin-bottom:8px;">Reading receipt…</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:20px;">Extracting items and prices</div>
+      <div style="display:flex;gap:6px;justify-content:center;">
+        <div class="scan-dot"></div><div class="scan-dot" style="animation-delay:0.2s"></div><div class="scan-dot" style="animation-delay:0.4s"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: Review -->
+    <div id="rscan-step-review" style="display:none;">
+      <div class="modal-sub" style="margin-bottom:12px;">Review and edit before saving.</div>
+      <div id="rscan-review-body"></div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-secondary" onclick="showRscanStep('upload')">← Rescan</button>
+        <button class="btn btn-green" onclick="applyReceiptScan()">✓ Apply to Log</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1336,7 +1449,6 @@ window.addEventListener('unhandledrejection', function(e){
 
       <div id="scan-hint" style="font-size:0.8rem;color:var(--text2);background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.5;">
         💡 Works best with <strong>clear lighting</strong> and the full recipe in frame. Handwritten notes work too — just make sure the text is legible.
-        <div style="margin-top:6px;"><a href="#" onclick="event.preventDefault();clearGeminiKey();closeModal('scan-recipe-overlay');" style="color:var(--accent);font-size:0.75rem;">🔑 Clear saved Gemini key</a></div>
       </div>
 
       <div id="scan-ocr-error" style="display:none;background:#fff3f3;border:1.5px solid var(--out);border-radius:10px;padding:10px 12px;font-size:0.8rem;color:var(--out);margin-bottom:10px;line-height:1.5;word-break:break-word;"></div>
@@ -2033,6 +2145,7 @@ async function loadAllData(){
   subscribe('shops', val => {
     STATE.shopLogs = val ? Object.entries(val).map(([k,s]) => s.id ? s : {...s,id:k}) : [];
     if(STATE.mode === 'history') renderHistoryTab();
+    if(STATE.mode === 'feed') renderFeedTab();
   });
   subscribe('recipes', val => {
     STATE.recipes = val ? Object.entries(val).map(([k,r]) => r.id ? r : {...r,id:k}) : [];
@@ -2334,13 +2447,13 @@ function getDefaultItems(){
 function setMode(m){
   STATE.mode=m;
   // Update bottom nav active state — only the 4 direct tabs + more for overflow
-  ['pantry','shopping','cook','meal'].forEach(t=>{
+  ['pantry','shopping','cook','meal','feed'].forEach(t=>{
     const el=document.getElementById('tab-'+t);
     if(el) el.classList.toggle('active', t===m);
   });
-  // "More" tab lights up when in stores/history/stored
+  // "More" tab no longer in nav — history/stores/stored reached via feed
   const moreTab=document.getElementById('tab-more');
-  if(moreTab) moreTab.classList.toggle('active', m==='stores'||m==='history'||m==='stored');
+  if(moreTab) moreTab.classList.toggle('active', false);
 
   document.body.className = m==='pantry'?'':'mode-'+m;
 
@@ -2349,7 +2462,7 @@ function setMode(m){
   if(addBtn){
     const addCircle=addBtn.querySelector('.nav-add-circle');
     if(addCircle) addCircle.textContent = '＋';
-    const disabled = m==='history'||m==='admin';
+    const disabled = m==='admin';
     addBtn.style.pointerEvents = disabled?'none':'';
     addBtn.style.opacity = disabled?'0.3':'';
   }
@@ -2376,6 +2489,7 @@ function handleMainAdd(){
   else if(STATE.mode==='cook')     openModal('cook-add-sheet-overlay');
   else if(STATE.mode==='meal')     openMealQuickAdd();
   else if(STATE.mode==='stored')   openAddStoredFood(null);
+  else if(STATE.mode==='history')  openManualShopLog();
   else                             openAddModal();
 }
 
@@ -2498,6 +2612,7 @@ function render(){
   else if(STATE.mode==='cook')     renderCookTab();
   else if(STATE.mode==='meal')     renderMealTab();
   else if(STATE.mode==='stored')   renderStoredFoodTab();
+  else if(STATE.mode==='feed')     renderFeedTab();
   else if(STATE.mode==='admin')    renderAdminTab();
 }
 
@@ -2639,24 +2754,6 @@ window.selectEmoji = selectEmoji;
 // ── API KEY MANAGEMENT ───────────────────────────────────────────────────────
 // Removed: Anthropic OCR key (replaced by Gemini below)
 
-// Gemini API key (for recipe OCR)
-function getGeminiKey(){ return localStorage.getItem('ok-gemini-key')||''; }
-function saveGeminiKey(){
-  const key = (document.getElementById('gemini-key-input')||{}).value?.trim()||'';
-  const errEl = document.getElementById('gemini-key-error');
-  if(key.length < 10){
-    if(errEl){ errEl.textContent='That doesn\'t look like a valid Gemini API key.'; errEl.style.display='block'; }
-    return;
-  }
-  if(errEl) errEl.style.display='none';
-  localStorage.setItem('ok-gemini-key', key);
-  closeModal('gemini-key-overlay');
-  _proceedWithScan();
-}
-window.saveGeminiKey = saveGeminiKey;
-function clearGeminiKey(){ localStorage.removeItem('ok-gemini-key'); showToast('Gemini API key cleared.'); }
-window.clearGeminiKey = clearGeminiKey;
-
 // ── RECIPE OCR / SCAN ─────────────────────────────────────────────────────────
 let _scanImageBase64 = null;
 let _scanImageMime   = null;
@@ -2666,12 +2763,6 @@ function openScanRecipe(){
   _scanImageBase64 = null;
   _scanImageMime   = null;
   _scanResult      = null;
-  if(!getGeminiKey()){
-    document.getElementById('gemini-key-input').value='';
-    document.getElementById('gemini-key-error').style.display='none';
-    openModal('gemini-key-overlay');
-    return;
-  }
   _proceedWithScan();
 }
 window.openScanRecipe = openScanRecipe;
@@ -2717,9 +2808,6 @@ async function runRecipeOCR(){
   if(!_scanImageBase64){ showToast('Please choose an image first.'); return; }
   showScanStep('processing');
 
-  const geminiKey = getGeminiKey();
-  if(!geminiKey){ showScanStep('upload'); showToast('No Gemini API key — tap Scan again to add one.'); return; }
-
   const prompt = `Extract the recipe from this image and return ONLY a JSON object — no markdown, no backticks, no explanation.
 
 The JSON must have exactly this shape:
@@ -2754,27 +2842,21 @@ Rules:
       generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
     };
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }
-    );
+    const response = await fetch(GEMINI_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body), signal: AbortSignal.timeout(30000)
+    });
 
     if(!response.ok){
       const err = await response.json().catch(()=>({}));
       const msg = err.error?.message || ('HTTP ' + response.status);
       const status = response.status;
-      // Only clear key on genuine auth errors
-      if(status === 401 || (status === 400 && /API.KEY|api.key|invalid.*key/i.test(msg))){
-        clearGeminiKey();
-        throw new Error('Invalid Gemini API key — tap Scan to re-enter it.');
-      }
-      if(status === 429) throw new Error('Gemini quota exceeded — free tier limit reached. Try again later.');
-      if(status === 403) throw new Error('Gemini key not enabled for this API. In Google AI Studio: make sure the key has Generative Language API access. (' + msg + ')');
+      if(status === 429) throw new Error('Gemini quota exceeded — try again in a minute.');
+      if(status === 403) throw new Error('Gemini API error (403): ' + msg);
       throw new Error('Gemini error ' + status + ': ' + msg);
     }
 
     const data = await response.json();
-    // Gemini response shape: data.candidates[0].content.parts[0].text
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     if(!rawText) throw new Error('No text returned from Gemini.');
 
@@ -2786,11 +2868,9 @@ Rules:
 
   } catch(e){
     showScanStep('upload');
-    const errMsg = e.message || 'Unknown error';
-    // Show persistent error above the button so it can be read
     const errBanner = document.getElementById('scan-ocr-error');
-    if(errBanner){ errBanner.textContent = '⚠️ ' + errMsg; errBanner.style.display='block'; }
-    showToast('⚠️ ' + errMsg);
+    if(errBanner){ errBanner.textContent = '⚠️ ' + (e.message||'Unknown error'); errBanner.style.display='block'; }
+    showToast('⚠️ ' + (e.message||'Unknown error'));
     console.error('OCR error:', e);
   }
 }
@@ -3165,6 +3245,7 @@ function renderHistoryTab(){
           ${renderReceiptLines(log)}
           <div class="btn-row" style="margin-top:12px;">
             <button class="btn btn-danger" style="font-size:0.8rem;padding:10px;" onclick="event.stopPropagation();confirmDeleteShop('${log.id}')">🗑 Delete</button>
+            <button class="btn btn-secondary" style="font-size:0.8rem;padding:10px;flex:1;" onclick="event.stopPropagation();openReceiptScan('${log.id}')">📷 Scan Receipt</button>
           </div>
         </div>
       </div>`;
@@ -3196,6 +3277,332 @@ function confirmDeleteShop(id){
   if(!confirm('Delete this shop log?')) return;
   deleteRecord('shops', id);
 }
+
+// ── MANUAL SHOP LOG (from + in history) ───────────────────────────────────────
+let _mlogItems = []; // [{name, price}]
+
+function openManualShopLog(){
+  _mlogItems = [];
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('mlog-date').value = today;
+
+  // Populate store select
+  const sel = document.getElementById('mlog-store-select');
+  sel.innerHTML = '<option value="">— No store —</option>' +
+    STATE.stores.map(s=>`<option value="${s.id}">${escHtml(s.name)}${s.city?' · '+escHtml(s.city):''}</option>`).join('');
+  sel.value = STATE.selectedStoreId || '';
+
+  // Update currency prefix
+  updateMlogCurrency();
+  sel.onchange = updateMlogCurrency;
+
+  renderMlogItems();
+  recalcMlogTotal();
+  document.getElementById('mlog-total-override').value = '';
+  openModal('manual-log-overlay');
+}
+window.openManualShopLog = openManualShopLog;
+
+function updateMlogCurrency(){
+  const storeId = document.getElementById('mlog-store-select').value;
+  const store = STATE.stores.find(s=>s.id===storeId);
+  const sym = currencySymbol(store?.currency || STATE.currency);
+  document.getElementById('mlog-currency-prefix').textContent = sym;
+  recalcMlogTotal();
+}
+
+function addMlogItem(name='', price=''){
+  _mlogItems.push({name, price});
+  renderMlogItems();
+}
+window.addMlogItem = addMlogItem;
+
+function removeMlogItem(idx){
+  _mlogItems.splice(idx, 1);
+  renderMlogItems();
+  recalcMlogTotal();
+}
+window.removeMlogItem = removeMlogItem;
+
+function renderMlogItems(){
+  const el = document.getElementById('mlog-items-list');
+  if(!_mlogItems.length){ el.innerHTML=''; return; }
+  el.innerHTML = _mlogItems.map((item, i)=>`
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input class="form-input" style="flex:1;padding:8px 10px;font-size:0.85rem;" placeholder="Item name"
+        value="${escHtml(item.name)}" oninput="_mlogItems[${i}].name=this.value" />
+      <input class="form-input" style="width:80px;padding:8px 10px;font-size:0.85rem;" type="number" min="0" step="0.01" placeholder="Price"
+        value="${item.price}" oninput="_mlogItems[${i}].price=this.value;recalcMlogTotal()" />
+      <button onclick="removeMlogItem(${i})" style="background:none;border:none;font-size:1.1rem;cursor:pointer;padding:4px;color:var(--text2);">✕</button>
+    </div>`).join('');
+}
+
+function recalcMlogTotal(){
+  const calc = _mlogItems.reduce((s,i)=>s+(parseFloat(i.price)||0), 0);
+  const storeId = document.getElementById('mlog-store-select')?.value;
+  const store = STATE.stores.find(s=>s.id===storeId);
+  const cur = store?.currency || STATE.currency;
+  document.getElementById('mlog-total-calc').textContent = calc>0 ? fmt(calc, cur) : '—';
+}
+
+async function saveManualLog(){
+  const storeId = document.getElementById('mlog-store-select').value || null;
+  const store = STATE.stores.find(s=>s.id===storeId);
+  const dateVal = document.getElementById('mlog-date').value;
+  const dateTs = dateVal ? new Date(dateVal).getTime() : Date.now();
+  const storeCurrency = store?.currency || STATE.currency;
+
+  const logItems = _mlogItems
+    .filter(i=>i.name.trim())
+    .map(i=>({
+      itemId: null,
+      itemName: i.name.trim(),
+      bought: true,
+      estimatedPrice: null,
+      actualPrice: parseFloat(i.price)||null
+    }));
+
+  const calcTotal = logItems.reduce((s,i)=>s+(i.actualPrice||0), 0);
+  const overrideVal = document.getElementById('mlog-total-override').value;
+  const actualTotal = overrideVal ? Number(parseFloat(overrideVal).toFixed(2)) : (calcTotal||null);
+
+  const shopLog = {
+    id: uid(),
+    storeId,
+    storeName: store?.name || 'Unknown Store',
+    date: dateTs,
+    items: logItems,
+    estimatedTotal: null,
+    actualTotal,
+    currency: storeCurrency,
+  };
+  await saveRecord('shops', shopLog);
+  closeModal('manual-log-overlay');
+  showToast('Shop log saved!');
+  setMode('history');
+}
+window.saveManualLog = saveManualLog;
+
+// ── RECEIPT OCR ───────────────────────────────────────────────────────────────
+// Baked-in Gemini key — users don't configure anything.
+const GEMINI_KEY = 'YOUR_GEMINI_KEY_HERE'; // replace with your key
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+
+let _rscanBase64 = null;
+let _rscanMime   = null;
+let _rscanResult = null; // {items:[{name,price}], total, storeName}
+let _rscanTargetLogId = null; // '__new__' or an existing log id
+
+function openReceiptScan(logId){
+  _rscanBase64 = null;
+  _rscanMime   = null;
+  _rscanResult = null;
+  _rscanTargetLogId = logId;
+  document.getElementById('rscan-preview-wrap').style.display = 'none';
+  document.getElementById('rscan-error').style.display = 'none';
+  document.getElementById('rscan-file-input').value = '';
+  document.getElementById('btn-rscan-extract').disabled = true;
+  showRscanStep('upload');
+  openModal('receipt-scan-overlay');
+}
+window.openReceiptScan = openReceiptScan;
+
+function showRscanStep(step){
+  ['upload','processing','review'].forEach(s=>{
+    document.getElementById('rscan-step-'+s).style.display = s===step ? 'block' : 'none';
+  });
+}
+
+function onReceiptFileChosen(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  document.getElementById('rscan-error').style.display='none';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    _rscanMime = file.type || 'image/jpeg';
+    _rscanBase64 = dataUrl.split(',')[1];
+    document.getElementById('rscan-preview-img').src = dataUrl;
+    document.getElementById('rscan-preview-wrap').style.display = 'block';
+    document.getElementById('btn-rscan-extract').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+window.onReceiptFileChosen = onReceiptFileChosen;
+
+async function runReceiptOCR(){
+  if(!_rscanBase64){ showToast('Please choose an image first.'); return; }
+  showRscanStep('processing');
+
+  const prompt = `You are a receipt parser. Extract all line items from this receipt image and return ONLY a JSON object — no markdown, no backticks, no preamble.
+
+Return this exact shape:
+{
+  "storeName": "Store name if visible, else empty string",
+  "date": "date if visible as YYYY-MM-DD, else empty string",
+  "items": [
+    { "name": "Item name", "price": 2.49 },
+    { "name": "Another item", "price": 1.00 }
+  ],
+  "total": 12.50
+}
+
+Rules:
+- items: include every product line with a price. Skip subtotals, taxes listed separately, loyalty discounts, and payment method lines.
+- price: number only, no currency symbol.
+- total: the final amount paid (after any discounts). If not visible use null.
+- If a line has no price, omit it.
+- Return ONLY the JSON object.`;
+
+  try {
+    const body = {
+      contents: [{ parts: [
+        { inline_data: { mime_type: _rscanMime, data: _rscanBase64 } },
+        { text: prompt }
+      ]}],
+      generationConfig: { temperature: 0, maxOutputTokens: 2048 }
+    };
+
+    const response = await fetch(GEMINI_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body), signal: AbortSignal.timeout(30000)
+    });
+
+    if(!response.ok){
+      const err = await response.json().catch(()=>({}));
+      const msg = err.error?.message || 'HTTP '+response.status;
+      const status = response.status;
+      if(status===429) throw new Error('Gemini quota exceeded — try again in a minute.');
+      if(status===403) throw new Error('Gemini API error (403): ' + msg);
+      throw new Error('Gemini error '+status+': '+msg);
+    }
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if(!rawText) throw new Error('No response from Gemini.');
+
+    const cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+    _rscanResult = JSON.parse(cleaned);
+    if(!_rscanResult.items) _rscanResult.items = [];
+
+    renderReceiptReview(_rscanResult);
+    showRscanStep('review');
+
+  } catch(e){
+    showRscanStep('upload');
+    const errEl = document.getElementById('rscan-error');
+    errEl.textContent = '⚠️ ' + (e.message||'Unknown error');
+    errEl.style.display = 'block';
+    console.error('Receipt OCR error:', e);
+  }
+}
+window.runReceiptOCR = runReceiptOCR;
+
+function renderReceiptReview(result){
+  const cur = STATE.currency;
+  let html = '';
+
+  if(result.storeName){
+    html += `<div style="font-size:0.82rem;color:var(--text2);margin-bottom:8px;">🏪 <strong>${escHtml(result.storeName)}</strong>${result.date?' · '+escHtml(result.date):''}</div>`;
+  }
+
+  html += `<div style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;">`;
+  html += result.items.map((item, i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--surface);">
+      <input class="form-input" style="flex:1;padding:6px 8px;font-size:0.82rem;" value="${escHtml(item.name)}"
+        oninput="_rscanResult.items[${i}].name=this.value" placeholder="Item name" />
+      <input class="form-input" style="width:72px;padding:6px 8px;font-size:0.82rem;" type="number" min="0" step="0.01"
+        value="${item.price!=null?item.price:''}" oninput="_rscanResult.items[${i}].price=parseFloat(this.value)||null;updateRscanTotal()"
+        placeholder="0.00" />
+      <button onclick="_rscanResult.items.splice(${i},1);renderReceiptReview(_rscanResult)" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem;padding:4px;">✕</button>
+    </div>`).join('');
+  html += `</div>`;
+
+  // Add item row
+  html += `<button class="btn btn-secondary" style="font-size:0.8rem;padding:8px 12px;margin-bottom:12px;" 
+    onclick="_rscanResult.items.push({name:'',price:null});renderReceiptReview(_rscanResult)">＋ Add item</button>`;
+
+  // Total
+  const calcTotal = result.items.reduce((s,i)=>s+(i.price||0),0);
+  const displayTotal = result.total != null ? result.total : calcTotal;
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border-radius:10px;">
+    <div style="font-weight:600;font-size:0.9rem;">Total</div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="font-size:0.78rem;color:var(--text2);">(calc: ${fmt(calcTotal,cur)})</span>
+      <input class="form-input" id="rscan-total-input" type="number" min="0" step="0.01" style="width:90px;padding:6px 8px;font-size:0.88rem;font-weight:600;"
+        value="${displayTotal||''}" placeholder="0.00" oninput="_rscanResult.total=parseFloat(this.value)||null" />
+    </div>
+  </div>`;
+
+  document.getElementById('rscan-review-body').innerHTML = html;
+}
+
+function updateRscanTotal(){
+  const calc = (_rscanResult?.items||[]).reduce((s,i)=>s+(i.price||0),0);
+  const inp = document.getElementById('rscan-total-input');
+  if(inp && _rscanResult?.total == null) inp.value = calc.toFixed(2);
+}
+
+function applyReceiptScan(){
+  if(!_rscanResult) return;
+  const logId = _rscanTargetLogId;
+
+  if(logId === '__new__'){
+    // Populate manual log modal from receipt data
+    closeModal('receipt-scan-overlay');
+
+    // Pre-fill store name if we got one and there's a match
+    if(_rscanResult.storeName){
+      const match = STATE.stores.find(s=>
+        s.name.toLowerCase().includes(_rscanResult.storeName.toLowerCase()) ||
+        _rscanResult.storeName.toLowerCase().includes(s.name.toLowerCase())
+      );
+      if(match) document.getElementById('mlog-store-select').value = match.id;
+    }
+    // Pre-fill date
+    if(_rscanResult.date){
+      document.getElementById('mlog-date').value = _rscanResult.date;
+    }
+    // Set total
+    if(_rscanResult.total){
+      document.getElementById('mlog-total-override').value = _rscanResult.total;
+    }
+    // Populate items
+    _mlogItems = (_rscanResult.items||[]).map(i=>({name:i.name, price:i.price!=null?i.price:''}));
+    renderMlogItems();
+    recalcMlogTotal();
+    showToast('Receipt applied — review and save!');
+
+  } else {
+    // Update an existing shop log with the scanned items/total
+    const log = STATE.shopLogs.find(l=>l.id===logId);
+    if(!log){ showToast('Log not found.'); return; }
+
+    const updatedItems = (_rscanResult.items||[]).map(i=>({
+      itemId: null,
+      itemName: i.name,
+      bought: true,
+      estimatedPrice: null,
+      actualPrice: i.price != null ? Number(i.price.toFixed(2)) : null
+    }));
+
+    const updatedLog = {
+      ...log,
+      items: updatedItems,
+      actualTotal: _rscanResult.total != null ? Number(_rscanResult.total.toFixed(2)) : log.actualTotal,
+    };
+    if(_rscanResult.storeName && !log.storeId){
+      updatedLog.storeName = _rscanResult.storeName;
+    }
+
+    saveRecord('shops', updatedLog).then(()=>{
+      closeModal('receipt-scan-overlay');
+      showToast('Receipt applied to log!');
+      renderHistoryTab();
+    });
+  }
+}
+window.applyReceiptScan = applyReceiptScan;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ITEM CRUD
@@ -5060,6 +5467,248 @@ function getFilteredFeedback(){
   });
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// FEED TAB — smart household activity & motivation feed
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Cooldown tracking — prevents same card type repeating aggressively
+// Stored in localStorage per-family so resets across installs but persists per device
+function getFeedCooldowns(){
+  try{ return JSON.parse(localStorage.getItem('ok-feed-cd')||'{}'); }catch{ return {}; }
+}
+function setFeedCooldown(key){
+  const cd=getFeedCooldowns();
+  cd[key]=Date.now();
+  localStorage.setItem('ok-feed-cd', JSON.stringify(cd));
+}
+function cooldownOk(key, ms){
+  const cd=getFeedCooldowns();
+  return !cd[key] || (Date.now()-cd[key]) > ms;
+}
+
+const DAY=86400000, HOUR=3600000;
+
+// ── Card builders ────────────────────────────────────────────────────────────
+function feedCard(type, icon, title, body, opts={}){
+  const {action, actionFn, time, priority=50} = opts;
+  return {type, icon, title, body, action, actionFn, time, priority};
+}
+
+function generateFeedCards(){
+  const cards = [];
+  const now = Date.now();
+
+  // ── 1. STORED FOOD EXPIRY ALERTS ──────────────────────────────────────────
+  const expiring = STATE.storedFood.filter(f=>{
+    if(!f.expiresAt) return false;
+    const daysLeft = (f.expiresAt - now) / DAY;
+    return daysLeft <= 3 && daysLeft > -1;
+  }).sort((a,b)=>a.expiresAt-b.expiresAt);
+
+  for(const f of expiring.slice(0,3)){
+    const daysLeft = (f.expiresAt - now) / DAY;
+    const urgent = daysLeft < 1;
+    const dayStr = daysLeft < 0.5 ? 'today' : daysLeft < 1.5 ? 'tomorrow' : `in ${Math.ceil(daysLeft)} days`;
+    cards.push(feedCard('alert', urgent?'🚨':'⏰',
+      urgent ? `Use ${f.emoji||'🫙'} ${f.name} today!` : `${f.emoji||'🫙'} ${f.name} expires ${dayStr}`,
+      urgent
+        ? `This needs to be used or it'll go to waste. Could it work in tonight's dinner?`
+        : `You have ${f.amount||'some'} in the fridge. Plan it into a meal soon.`,
+      { action: 'View Stored Food', actionFn: "setMode('stored')", priority: urgent?99:80 }
+    ));
+  }
+
+  // ── 2. PANTRY OUT/LOW ALERTS ──────────────────────────────────────────────
+  const outItems = STATE.items.filter(i=>i.status==='out');
+  const lowItems = STATE.items.filter(i=>i.status==='low');
+  if(outItems.length >= 3 && cooldownOk('pantry-out', 4*HOUR)){
+    const names = outItems.slice(0,3).map(i=>i.name).join(', ');
+    const extra = outItems.length>3 ? ` and ${outItems.length-3} more` : '';
+    cards.push(feedCard('pantry','📦','Things are running low',
+      `${names}${extra} ${outItems.length===1?'is':'are'} out. Good time to add to your shopping list.`,
+      { action:'Go to Shop', actionFn:"setMode('shopping')", priority:70 }
+    ));
+  } else if(outItems.length === 1){
+    cards.push(feedCard('pantry','📦',`${outItems[0].name} is out`,
+      `Add it to your shopping list so you don't forget on the next run.`,
+      { action:'View Shopping', actionFn:"setMode('shopping')", priority:60 }
+    ));
+  }
+
+  // ── 3. RECIPE MATCH — "You could make X tonight" ──────────────────────────
+  if(STATE.recipes.length && cooldownOk('meal-suggest', 3*HOUR)){
+    const pantryNames = new Set(STATE.items.filter(i=>i.status!=='out').map(i=>i.name.toLowerCase().trim()));
+    const matches = STATE.recipes.map(r=>{
+      const ings = r.ingredients||[];
+      if(!ings.length) return null;
+      const have = ings.filter(ing=>pantryNames.has(ing.name.toLowerCase().trim())).length;
+      const pct = have/ings.length;
+      return {r, have, total:ings.length, pct};
+    }).filter(Boolean).filter(m=>m.pct>=0.6).sort((a,b)=>b.pct-a.pct);
+
+    if(matches.length){
+      const top = matches[0];
+      const missing = top.total - top.have;
+      cards.push(feedCard('meal','🍽️',`You could make ${top.r.name} ${top.r.emoji||''}`.trim(),
+        missing===0
+          ? `You have all the ingredients — perfect for tonight!`
+          : `You have ${top.have} of ${top.total} ingredients. Only missing ${missing} item${missing!==1?'s':''}.`,
+        { action:'Open Recipe', actionFn:`openRecipeDetail('${top.r.id}')`, priority:75 }
+      ));
+    }
+  }
+
+  // ── 4. RECENT SHOP ACTIVITY ───────────────────────────────────────────────
+  const recentLogs = [...STATE.shopLogs].sort((a,b)=>b.date-a.date).slice(0,3);
+  for(const log of recentLogs){
+    const hoursAgo = (now - log.date) / HOUR;
+    if(hoursAgo > 48) break; // only show if very recent
+    const store = STATE.stores.find(s=>s.id===log.storeId);
+    const storeName = store?.name || log.storeName || 'a shop';
+    const total = log.actualTotal||log.estimatedTotal;
+    const itemCount = (log.items||[]).filter(i=>i.bought).length;
+    const timeStr = hoursAgo<1 ? 'just now' : hoursAgo<2 ? '1 hour ago' : hoursAgo<24 ? `${Math.round(hoursAgo)} hours ago` : 'yesterday';
+    cards.push(feedCard('shop','🛒',`Shop logged at ${storeName}`,
+      `${itemCount} item${itemCount!==1?'s':''} bought${total?' · '+fmt(total, log.currency||STATE.currency):''}`,
+      { time: timeStr, priority:65 }
+    ));
+  }
+
+  // ── 5. PANTRY RECENTLY RESTOCKED ─────────────────────────────────────────
+  const recentlyStocked = STATE.items
+    .filter(i=>i.status==='full' && i.updated && (now-i.updated) < 12*HOUR)
+    .sort((a,b)=>b.updated-a.updated);
+  if(recentlyStocked.length >= 2){
+    const names = recentlyStocked.slice(0,3).map(i=>i.name).join(', ');
+    const extra = recentlyStocked.length>3?` +${recentlyStocked.length-3} more`:'';
+    cards.push(feedCard('pantry','✅','Pantry restocked',
+      `${names}${extra} marked as full recently. Looking good!`,
+      { time:'today', priority:55 }
+    ));
+  }
+
+  // ── 6. MEAL PLAN NUDGE ────────────────────────────────────────────────────
+  if(cooldownOk('meal-plan-nudge', 24*HOUR)){
+    const todayKey = todayStr();
+    const hasTodayMeal = STATE.mealPlan && STATE.mealPlan[todayKey] &&
+      Object.values(STATE.mealPlan[todayKey]).some(slot=>(slot||[]).length>0);
+    if(!hasTodayMeal && new Date().getHours() < 17){
+      const greeting = new Date().getHours() < 12 ? 'Good morning' : 'Good afternoon';
+      cards.push(feedCard('habit','📅',`${greeting}! What's for dinner?`,
+        `You haven't planned any meals for today yet. Takes 30 seconds — and avoids the 6pm "what do we eat?" panic.`,
+        { action:'Plan Meals', actionFn:"setMode('meal')", priority:68 }
+      ));
+    }
+  }
+
+  // ── 7. UNUSED FEATURE NUDGES (context-aware, long cooldowns) ─────────────
+  if(!STATE.recipes.length && cooldownOk('nudge-recipes', 3*DAY)){
+    cards.push(feedCard('tip','💡','Try scanning a recipe',
+      `Photograph a recipe from a book or print — Our Kitchen reads it and saves all the ingredients automatically. Tap Cook to try it.`,
+      { action:'Go to Cook', actionFn:"setMode('cook')", priority:30 }
+    ));
+  }
+
+  if(!STATE.stores.length && cooldownOk('nudge-stores', 3*DAY)){
+    cards.push(feedCard('tip','🏪','Add your regular stores',
+      `Adding stores lets you track prices per shop, see estimated totals before you go, and log receipts after. Takes one minute.`,
+      { action:'Add a Store', actionFn:"setMode('stores')", priority:28 }
+    ));
+  }
+
+  if(STATE.storedFood.length===0 && STATE.items.filter(i=>i.status==='full').length>5 && cooldownOk('nudge-stored', 4*DAY)){
+    cards.push(feedCard('tip','🫙','Got leftovers?',
+      `The Stored Food section tracks what's in your fridge ready to eat — leftovers, batch cooking, anything with an expiry. Never wonder "is that still good?" again.`,
+      { action:'View Stored Food', actionFn:"setMode('stored')", priority:25 }
+    ));
+  }
+
+  if(STATE.shopLogs.length===0 && STATE.stores.length>0 && cooldownOk('nudge-history', 3*DAY)){
+    cards.push(feedCard('tip','📋','Log your first shop',
+      `After a shopping trip, log it in History to track spending, compare prices across stores, and scan your receipt automatically.`,
+      { action:'Go to History', actionFn:"setMode('history')", priority:27 }
+    ));
+  }
+
+  // ── 8. SPENDING INSIGHT (monthly) ────────────────────────────────────────
+  if(STATE.shopLogs.length >= 2 && cooldownOk('insight-spend', 6*HOUR)){
+    const thisMonth = new Date().toISOString().slice(0,7);
+    const lastMonthDate = new Date(); lastMonthDate.setMonth(lastMonthDate.getMonth()-1);
+    const lastMonth = lastMonthDate.toISOString().slice(0,7);
+    const thisTotal = STATE.shopLogs
+      .filter(l=>new Date(l.date).toISOString().slice(0,7)===thisMonth)
+      .reduce((s,l)=>s+(l.actualTotal||0),0);
+    const lastTotal = STATE.shopLogs
+      .filter(l=>new Date(l.date).toISOString().slice(0,7)===lastMonth)
+      .reduce((s,l)=>s+(l.actualTotal||0),0);
+    if(thisTotal > 0){
+      const msg = lastTotal>0
+        ? (thisTotal < lastTotal
+          ? `Down ${fmt(lastTotal-thisTotal,STATE.currency)} from last month — nice work! 🎉`
+          : thisTotal > lastTotal*1.15
+          ? `Up ${fmt(thisTotal-lastTotal,STATE.currency)} from last month. Anything to cut back on?`
+          : `About the same as last month.`)
+        : `${fmt(thisTotal, STATE.currency)} spent so far this month.`;
+      cards.push(feedCard('insight','📊',`This month's grocery spend`,
+        msg,
+        { action:'View History', actionFn:"setMode('history')", priority:40 }
+      ));
+    }
+  }
+
+  // ── 9. APP UPDATE HIGHLIGHTS (hardcoded, timestamped) ────────────────────
+  if(cooldownOk('update-receipt-scan', 7*DAY)){
+    cards.push(feedCard('update','🌟','New: Receipt scanning',
+      `Photograph a receipt in History to automatically log items and prices. Tap History → + → Scan Receipt to try it.`,
+      { action:'Try it', actionFn:"setMode('history')", priority:35 }
+    ));
+  }
+
+  // Sort by priority descending
+  cards.sort((a,b)=>b.priority-a.priority);
+  return cards;
+}
+
+function renderFeedCard(card){
+  const actionHtml = card.action
+    ? `<button class="feed-card-action" onclick="${card.actionFn};setFeedCooldown('click-${card.type}');">${card.action} →</button>`
+    : '';
+  const timeHtml = card.time ? `<div class="feed-card-time">${escHtml(card.time)}</div>` : '';
+  return `<div class="feed-card fc-${card.type}">
+    <div class="feed-card-header">
+      <div class="feed-card-icon">${card.icon}</div>
+      <div class="feed-card-title">${escHtml(card.title)}</div>
+    </div>
+    <div class="feed-card-body">${escHtml(card.body)}${actionHtml?'<br>'+actionHtml:''}${timeHtml}</div>
+  </div>`;
+}
+
+function renderFeedTab(){
+  document.getElementById('stats-bar').style.display='none';
+  document.getElementById('filter-bar').innerHTML='';
+  const container = document.getElementById('items-container');
+
+  const cards = generateFeedCards();
+
+  // Quick-access links row
+  const quickLinks = `
+    <div class="feed-section-label">Quick Access</div>
+    <div class="feed-more-links">
+      <div class="feed-more-link" onclick="setMode('history')"><span class="fml-icon">📋</span>History</div>
+      <div class="feed-more-link" onclick="setMode('stores')"><span class="fml-icon">🏪</span>Stores</div>
+      <div class="feed-more-link" onclick="setMode('stored')"><span class="fml-icon">🫙</span>Stored</div>
+      <div class="feed-more-link" onclick="openMoreDrawer()"><span class="fml-icon">⚙️</span>Settings</div>
+    </div>`;
+
+  if(!cards.length){
+    container.innerHTML = quickLinks + empty('✨','All quiet in the kitchen','Check back after your next shop or when something needs attention.');
+    return;
+  }
+
+  const feedSection = `<div class="feed-section-label">Your Feed</div><div class="feed-list">${cards.map(renderFeedCard).join('')}</div>`;
+  container.innerHTML = quickLinks + feedSection;
+}
+
 function renderAdminTab(){
   document.getElementById('stats-bar').style.display='none';
   document.getElementById('filter-bar').innerHTML='';
@@ -5243,7 +5892,7 @@ function bindEvents(){
   document.getElementById('tab-shopping').addEventListener('click', () => setMode('shopping'));
   document.getElementById('tab-cook').addEventListener('click',     () => setMode('cook'));
   document.getElementById('tab-meal').addEventListener('click',     () => setMode('meal'));
-  document.getElementById('tab-more').addEventListener('click',     () => openMoreDrawer());
+  document.getElementById('tab-feed').addEventListener('click',     () => setMode('feed'));
   document.getElementById('main-add-btn').addEventListener('click', handleMainAdd);
 
   // More drawer
@@ -5357,7 +6006,8 @@ function bindEvents(){
     'emoji-picker-overlay',
     'scan-recipe-overlay',
     'cook-add-sheet-overlay',
-    'gemini-key-overlay',
+    'manual-log-overlay',
+    'receipt-scan-overlay',
   ].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.addEventListener('click', e => {
@@ -5452,6 +6102,8 @@ function bindEvents(){
   window.closeMoreDrawer         = closeMoreDrawer;
   window.renderFilterBar         = renderFilterBar;
   window.renderHistoryTab        = renderHistoryTab;
+  window.renderFeedTab           = renderFeedTab;
+  window.setFeedCooldown         = setFeedCooldown;
   window.manualSync              = manualSync;
 }
 
