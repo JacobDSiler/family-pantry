@@ -1089,6 +1089,101 @@ window.addEventListener('unhandledrejection', function(e){
 </div>
 
 <!-- STORE PICKER (in shopping mode) -->
+
+<!-- PANTRY ADD ACTION SHEET -->
+<div class="overlay" id="pantry-add-sheet-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add to Pantry</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin:8px 0 4px;">
+      <button onclick="closeModal('pantry-add-sheet-overlay');openSmartScan();"
+        style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--accent-light,#fff8e7);border:1.5px solid var(--accent);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.8rem;">📸</span>
+        <div>
+          <div style="font-weight:700;color:var(--accent);font-size:0.95rem;">Smart Scan</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;">Photo your fridge or cupboard — AI adds items automatically</div>
+        </div>
+      </button>
+      <button onclick="closeModal('pantry-add-sheet-overlay');openAddModal();"
+        style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.8rem;">✏️</span>
+        <div>
+          <div style="font-weight:700;font-size:0.95rem;">Add Manually</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;">Enter a single item yourself</div>
+        </div>
+      </button>
+    </div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn btn-secondary" onclick="closeModal('pantry-add-sheet-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SMART SCAN MODAL -->
+<div class="overlay" id="smart-scan-overlay" style="z-index:340;">
+  <div class="modal" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📸 Smart Scan</div>
+
+    <!-- UPLOAD STEP -->
+    <div id="ss-step-upload">
+      <div class="modal-sub" style="margin-bottom:14px;">Photo your fridge, freezer, or cupboard. Up to 4 images at once.</div>
+
+      <!-- Drop zone / image picker -->
+      <div id="ss-dropzone" onclick="document.getElementById('ss-file-input').click()"
+        style="border:2px dashed var(--accent);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:var(--accent-light,#fff8e7);margin-bottom:12px;transition:background 0.15s;">
+        <div style="font-size:2.2rem;margin-bottom:6px;">📷</div>
+        <div style="font-weight:600;color:var(--accent);font-size:0.95rem;">Tap to choose images</div>
+        <div style="font-size:0.75rem;color:var(--text2);margin-top:4px;">JPG, PNG, WEBP · up to 4 photos</div>
+      </div>
+      <input type="file" id="ss-file-input" accept="image/*" multiple style="display:none;" onchange="onSmartScanFilesChosen(event)" />
+
+      <!-- Thumbnails -->
+      <div id="ss-thumbs" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+
+      <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--text2);line-height:1.6;margin-bottom:14px;">
+        💡 Works best with <strong>clear lighting</strong> and items visible. Open fridge doors and cupboards fully. Multiple photos of different areas work great.
+      </div>
+      <div><a href="#" onclick="event.preventDefault();clearGeminiKey();closeModal('smart-scan-overlay');" style="color:var(--accent);font-size:0.75rem;">🔑 Clear saved Gemini key</a></div>
+
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-secondary" onclick="closeModal('smart-scan-overlay')">Cancel</button>
+        <button class="btn btn-primary" id="btn-smart-scan-go" style="background:var(--accent);" onclick="runSmartScan()" disabled>
+          ✨ Scan &amp; Identify
+        </button>
+      </div>
+    </div>
+
+    <!-- PROCESSING STEP -->
+    <div id="ss-step-processing" style="display:none;text-align:center;padding:32px 0;">
+      <div style="font-size:2.5rem;margin-bottom:12px;">
+        <span class="scan-dot"></span><span class="scan-dot"></span><span class="scan-dot"></span>
+      </div>
+      <div style="font-weight:600;font-size:1rem;margin-bottom:6px;">Scanning your kitchen…</div>
+      <div style="color:var(--text2);font-size:0.82rem;">AI is identifying items and quantities</div>
+    </div>
+
+    <!-- REVIEW STEP -->
+    <div id="ss-step-review" style="display:none;">
+      <div class="modal-sub" id="ss-review-sub" style="margin-bottom:14px;"></div>
+
+      <div id="ss-review-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:50vh;overflow-y:auto;"></div>
+
+      <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--text2);margin-bottom:14px;">
+        ✅ <strong>Existing items</strong> will have their quantity updated. <strong>New items</strong> will be added to your pantry. Uncheck anything that's wrong.
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="ssBackToUpload()">← Re-scan</button>
+        <button class="btn btn-primary" id="btn-ss-save" style="background:var(--accent);" onclick="saveSmartScan()">
+          ✓ Save to Pantry
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- COOK ADD ACTION SHEET -->
 <div class="overlay" id="cook-add-sheet-overlay">
   <div class="modal">
@@ -2490,7 +2585,7 @@ function handleMainAdd(){
   else if(STATE.mode==='meal')     openMealQuickAdd();
   else if(STATE.mode==='stored')   openAddStoredFood(null);
   else if(STATE.mode==='history')  openManualShopLog();
-  else                             openAddModal();
+  else                             openModal('pantry-add-sheet-overlay');
 }
 
 // ── MEAL QUICK-ADD ────────────────────────────────────────────────────────────
@@ -2752,7 +2847,26 @@ function selectEmoji(emoji){
 window.selectEmoji = selectEmoji;
 
 // ── API KEY MANAGEMENT ───────────────────────────────────────────────────────
-// Removed: Anthropic OCR key (replaced by Gemini below)
+
+// Gemini API key — used for recipe OCR and Smart Scan
+let _pendingAfterGeminiKey = null;
+function getGeminiKey(){ return localStorage.getItem('ok-gemini-key')||''; }
+function saveGeminiKey(){
+  const key = (document.getElementById('gemini-key-input')||{}).value?.trim()||'';
+  const errEl = document.getElementById('gemini-key-error');
+  if(key.length < 10){
+    if(errEl){ errEl.textContent="That doesn't look like a valid Gemini API key."; errEl.style.display='block'; }
+    return;
+  }
+  if(errEl) errEl.style.display='none';
+  localStorage.setItem('ok-gemini-key', key);
+  closeModal('gemini-key-overlay');
+  if(_pendingAfterGeminiKey){ const fn=_pendingAfterGeminiKey; _pendingAfterGeminiKey=null; setTimeout(fn,200); }
+  else _proceedWithScan();
+}
+window.saveGeminiKey = saveGeminiKey;
+function clearGeminiKey(){ localStorage.removeItem('ok-gemini-key'); showToast('Gemini API key cleared.'); }
+window.clearGeminiKey = clearGeminiKey;
 
 // ── RECIPE OCR / SCAN ─────────────────────────────────────────────────────────
 let _scanImageBase64 = null;
@@ -2763,6 +2877,13 @@ function openScanRecipe(){
   _scanImageBase64 = null;
   _scanImageMime   = null;
   _scanResult      = null;
+  if(!getGeminiKey()){
+    _pendingAfterGeminiKey = null; // recipe scan uses _proceedWithScan via default path
+    document.getElementById('gemini-key-input').value='';
+    document.getElementById('gemini-key-error').style.display='none';
+    openModal('gemini-key-overlay');
+    return;
+  }
   _proceedWithScan();
 }
 window.openScanRecipe = openScanRecipe;
@@ -2960,6 +3081,243 @@ async function saveScanResult(){
   showToast(`✅ "${name}" saved!${addMissing?' Missing ingredients added to shopping list.':''}`);
 }
 window.saveScanResult = saveScanResult;
+
+// ── SMART SCAN (fridge / cupboard / pantry) ───────────────────────────────────
+let _ssImages = []; // [{base64, mime}]
+let _ssResult = []; // parsed items from Gemini
+
+function openSmartScan(){
+  _ssImages = [];
+  _ssResult = [];
+  if(!getGeminiKey()){
+    _pendingAfterGeminiKey = () => openSmartScan();
+    document.getElementById('gemini-key-input').value='';
+    document.getElementById('gemini-key-error').style.display='none';
+    openModal('gemini-key-overlay');
+    return;
+  }
+  ssShowStep('upload');
+  renderSsThumbs();
+  document.getElementById('btn-smart-scan-go').disabled = true;
+  openModal('smart-scan-overlay');
+}
+window.openSmartScan = openSmartScan;
+
+function ssShowStep(step){
+  ['upload','processing','review'].forEach(s => {
+    document.getElementById('ss-step-'+s).style.display = s===step ? '' : 'none';
+  });
+}
+
+function onSmartScanFilesChosen(e){
+  const files = Array.from(e.target.files).slice(0, 4);
+  if(!files.length) return;
+  _ssImages = [];
+  const promises = files.map(file => new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      const base64 = dataUrl.split(',')[1];
+      const mime = file.type || 'image/jpeg';
+      _ssImages.push({base64, mime});
+      res();
+    };
+    reader.readAsDataURL(file);
+  }));
+  Promise.all(promises).then(() => {
+    renderSsThumbs();
+    document.getElementById('btn-smart-scan-go').disabled = _ssImages.length === 0;
+  });
+}
+window.onSmartScanFilesChosen = onSmartScanFilesChosen;
+
+function renderSsThumbs(){
+  const el = document.getElementById('ss-thumbs');
+  if(!_ssImages.length){ el.style.display='none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = _ssImages.map((img, i) =>
+    `<div style="position:relative;">
+      <img src="data:${img.mime};base64,${img.base64}" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:2px solid var(--border);" />
+      <button onclick="removeSsImage(${i})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--out);color:#fff;border:none;font-size:0.7rem;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>`
+  ).join('');
+}
+window.removeSsImage = function(i){ _ssImages.splice(i,1); renderSsThumbs(); document.getElementById('btn-smart-scan-go').disabled=_ssImages.length===0; };
+
+async function runSmartScan(){
+  if(!_ssImages.length){ showToast('Please choose at least one image.'); return; }
+  ssShowStep('processing');
+
+  const geminiKey = getGeminiKey();
+  if(!geminiKey){ ssShowStep('upload'); showToast('No Gemini key — tap Scan again.'); return; }
+
+  const cats = Object.keys(CAT_EMOJI_MAP).join(', ');
+  const existingNames = STATE.items.map(i => i.name).join(', ') || 'none yet';
+
+  const prompt = `You are analyzing photos of a fridge, freezer, or kitchen cupboard. Identify every food and household item you can see.
+
+Return ONLY a JSON array — no markdown, no backticks, no explanation. Each element:
+{
+  "name": "item name, singular and clear (e.g. 'Semi-Skimmed Milk', 'Cheddar Cheese', 'Orange Juice')",
+  "category": "one of: ${cats}",
+  "qty": <number or null — visible count or estimated amount. 1 if unsure>,
+  "status": "full" | "low" | "out"
+}
+
+Rules:
+- status: "full" if container/packet looks mostly full or sealed, "low" if visibly less than half, "out" only if completely empty.
+- qty: count individual items where possible (e.g. 3 yoghurts = 3). For a single bottle that's half full, qty=1 status=low.
+- Be specific with names: "Whole Milk" not "Milk", "Greek Yoghurt" not "Yoghurt" where clearly visible.
+- Already tracked items in this kitchen: ${existingNames}. If you see one of these, use the EXACT same name so it can be matched.
+- Ignore non-food items unless clearly household (cleaning products etc).
+- Return ONLY the JSON array.`;
+
+  // Build parts: all images first, then the prompt text
+  const parts = [
+    ..._ssImages.map(img => ({ inline_data: { mime_type: img.mime, data: img.base64 } })),
+    { text: prompt }
+  ];
+
+  try {
+    const body = {
+      contents: [{ parts }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+    };
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), signal: AbortSignal.timeout(45000) }
+    );
+
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      if(res.status===400 && (err.error?.message||'').includes('API_KEY')){ clearGeminiKey(); }
+      throw new Error(err.error?.message || 'Gemini error '+res.status);
+    }
+
+    const data = await res.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if(!rawText) throw new Error('No response from Gemini.');
+
+    const cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+    _ssResult = JSON.parse(cleaned);
+    if(!Array.isArray(_ssResult)) throw new Error('Unexpected response format.');
+
+    renderSmartScanReview();
+    ssShowStep('review');
+
+  } catch(e){
+    ssShowStep('upload');
+    showToast('⚠️ Scan failed: ' + (e.message||'unknown error'));
+    console.error('Smart scan error:', e);
+  }
+}
+window.runSmartScan = runSmartScan;
+
+function renderSmartScanReview(){
+  const existing = STATE.items;
+  // Build a map: normalised name → item
+  const existingMap = new Map(existing.map(i => [i.name.toLowerCase().trim(), i]));
+
+  // Annotate each result: is it an update or a new item?
+  const annotated = _ssResult.map((item, idx) => {
+    const key = item.name.toLowerCase().trim();
+    // Try exact match first, then partial
+    let match = existingMap.get(key);
+    if(!match){
+      for(const [k, v] of existingMap){
+        if(k.includes(key) || key.includes(k)){ match = v; break; }
+      }
+    }
+    return { ...item, _idx: idx, _existing: match || null };
+  });
+  _ssResult = annotated;
+
+  const updates = annotated.filter(i => i._existing);
+  const adds = annotated.filter(i => !i._existing);
+
+  document.getElementById('ss-review-sub').textContent =
+    `Found ${annotated.length} item${annotated.length!==1?'s':''} · ${updates.length} update${updates.length!==1?'s':''}, ${adds.length} new`;
+
+  const el = document.getElementById('ss-review-list');
+
+  function rowHtml(item){
+    const isUpdate = !!item._existing;
+    const badge = isUpdate
+      ? `<span style="font-size:0.68rem;padding:2px 7px;border-radius:20px;background:var(--low-bg,#fff3cd);color:var(--low,#b45309);font-weight:600;">UPDATE</span>`
+      : `<span style="font-size:0.68rem;padding:2px 7px;border-radius:20px;background:var(--full-bg,#dcfce7);color:var(--full,#166534);font-weight:600;">NEW</span>`;
+    const statusDot = {'full':'🟢','low':'🟡','out':'🔴'}[item.status]||'⚪';
+    const qtyStr = item.qty != null ? ` · ${item.qty}` : '';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:12px;cursor:pointer;">
+      <input type="checkbox" data-ss-idx="${item._idx}" checked style="width:18px;height:18px;cursor:pointer;flex-shrink:0;" />
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span style="font-weight:600;font-size:0.9rem;">${escHtml(item.name)}</span>
+          ${badge}
+        </div>
+        <div style="font-size:0.75rem;color:var(--text2);margin-top:2px;">${escHtml(item.category)} · ${statusDot} ${item.status}${qtyStr}</div>
+        ${isUpdate ? `<div style="font-size:0.72rem;color:var(--text2);margin-top:1px;">Was: ${item._existing.status}${item._existing.qty!=null?' · '+item._existing.qty:''}</div>` : ''}
+      </div>
+    </label>`;
+  }
+
+  let html = '';
+  if(updates.length){
+    html += `<div style="font-size:0.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;padding:4px 0 2px;">Updating existing items</div>`;
+    html += updates.map(rowHtml).join('');
+  }
+  if(adds.length){
+    if(updates.length) html += `<div style="height:8px;"></div>`;
+    html += `<div style="font-size:0.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;padding:4px 0 2px;">Adding new items</div>`;
+    html += adds.map(rowHtml).join('');
+  }
+  el.innerHTML = html;
+}
+
+async function saveSmartScan(){
+  const checked = new Set(
+    Array.from(document.querySelectorAll('[data-ss-idx]:checked')).map(el => parseInt(el.dataset.ssIdx))
+  );
+  const toSave = _ssResult.filter(item => checked.has(item._idx));
+  if(!toSave.length){ showToast('Nothing selected.'); return; }
+
+  let updated = 0, added = 0;
+  for(const item of toSave){
+    const status = item.status || 'low';
+    const qty = item.qty != null ? item.qty : null;
+    if(item._existing){
+      // Update existing item's qty and status
+      await saveRecord('items', { ...item._existing, status, qty, updated: Date.now() });
+      updated++;
+    } else {
+      // Add new item
+      await saveRecord('items', {
+        id: uid(),
+        name: item.name,
+        category: item.category || 'Other',
+        status,
+        qty,
+        maxQty: null,
+        estimatedPrice: null,
+        updated: Date.now()
+      });
+      added++;
+    }
+  }
+
+  closeModal('smart-scan-overlay');
+  const parts = [];
+  if(updated) parts.push(`${updated} item${updated!==1?'s':''} updated`);
+  if(added)   parts.push(`${added} new item${added!==1?'s':''} added`);
+  showToast('✅ ' + parts.join(', '));
+}
+window.saveSmartScan = saveSmartScan;
+
+function ssBackToUpload(){
+  _ssResult = [];
+  ssShowStep('upload');
+}
+window.ssBackToUpload = ssBackToUpload;
 function formatDate(ts){
   return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
@@ -6006,6 +6364,9 @@ function bindEvents(){
     'emoji-picker-overlay',
     'scan-recipe-overlay',
     'cook-add-sheet-overlay',
+    'pantry-add-sheet-overlay',
+    'smart-scan-overlay',
+    'gemini-key-overlay',
     'manual-log-overlay',
     'receipt-scan-overlay',
   ].forEach(id => {
@@ -6056,6 +6417,11 @@ function bindEvents(){
   window.findNearbyStores        = findNearbyStores;
   window.pickSearchedStore       = pickSearchedStore;
   window.onStoreSearchInput      = onStoreSearchInput;
+  window.openSmartScan           = openSmartScan;
+  window.onSmartScanFilesChosen  = onSmartScanFilesChosen;
+  window.runSmartScan            = runSmartScan;
+  window.saveSmartScan           = saveSmartScan;
+  window.ssBackToUpload          = ssBackToUpload;
   window.clampToOneEmoji         = clampToOneEmoji;
   window.closeModal              = closeModal;
   window.openModal               = openModal;
