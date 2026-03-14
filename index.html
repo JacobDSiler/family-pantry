@@ -2878,9 +2878,11 @@ function openScanRecipe(){
   _scanImageMime   = null;
   _scanResult      = null;
   if(!getGeminiKey()){
-    _pendingAfterGeminiKey = null; // recipe scan uses _proceedWithScan via default path
-    document.getElementById('gemini-key-input').value='';
-    document.getElementById('gemini-key-error').style.display='none';
+    _pendingAfterGeminiKey = null;
+    const ki = document.getElementById('gemini-key-input');
+    const ke = document.getElementById('gemini-key-error');
+    if(ki) ki.value='';
+    if(ke) ke.style.display='none';
     openModal('gemini-key-overlay');
     return;
   }
@@ -3091,8 +3093,10 @@ function openSmartScan(){
   _ssResult = [];
   if(!getGeminiKey()){
     _pendingAfterGeminiKey = () => openSmartScan();
-    document.getElementById('gemini-key-input').value='';
-    document.getElementById('gemini-key-error').style.display='none';
+    const ki = document.getElementById('gemini-key-input');
+    const ke = document.getElementById('gemini-key-error');
+    if(ki) ki.value='';
+    if(ke) ke.style.display='none';
     openModal('gemini-key-overlay');
     return;
   }
@@ -6388,9 +6392,14 @@ function bindEvents(){
   window.toggleFilter            = toggleFilter;
   window.toggleShopFilter        = toggleShopFilter;
   window.deleteCategory          = deleteCategory;
+  window.openAddModal            = openAddModal;
+  window.openAddStore            = openAddStore;
   window.openAddModalForCategory = openAddModalForCategory;
   window.openRecipeDetail        = openRecipeDetail;
   window.openRecipeEdit          = openRecipeEdit;
+  window.recalcMlogTotal         = recalcMlogTotal;
+  window.showRscanStep           = showRscanStep;
+  window.switchIngTab            = switchIngTab;
   window.startFocusMode          = startFocusMode;
   window.toggleFocusGrab         = toggleFocusGrab;
   window.removeRecipeIngredient  = removeRecipeIngredient;
