@@ -1119,6 +1119,30 @@ window.addEventListener('unhandledrejection', function(e){
   </div>
 </div>
 
+<!-- GEMINI API KEY MODAL -->
+<div class="overlay" id="gemini-key-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🤖 Gemini API Key</div>
+    <div class="modal-sub">Required once for recipe scanning &amp; Smart Scan. Stored on this device only.</div>
+    <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+      1. Go to <strong style="color:var(--cook-accent);">aistudio.google.com</strong><br>
+      2. Sign in with Google → Get API Key → Create API key<br>
+      3. Copy the key and paste it below.<br>
+      Free tier: 1,500 requests/day — no credit card needed.
+    </div>
+    <div class="form-group">
+      <label class="form-label">Gemini API Key</label>
+      <input class="form-input" id="gemini-key-input" type="password" placeholder="Paste your Gemini API key…" autocomplete="off" />
+    </div>
+    <div id="gemini-key-error" style="display:none;font-size:0.78rem;color:var(--out);margin-bottom:8px;"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('gemini-key-overlay')">Cancel</button>
+      <button class="btn btn-primary" style="background:var(--cook-accent);" onclick="saveGeminiKey()">Save &amp; Continue</button>
+    </div>
+  </div>
+</div>
+
 <!-- SMART SCAN MODAL -->
 <div class="overlay" id="smart-scan-overlay" style="z-index:340;">
   <div class="modal" style="max-height:90vh;overflow-y:auto;">
@@ -2846,46 +2870,34 @@ function selectEmoji(emoji){
 }
 window.selectEmoji = selectEmoji;
 
-// ── API KEY MANAGEMENT ───────────────────────────────────────────────────────
+// ── GEMINI PROXY ─────────────────────────────────────────────────────────────
+// All Gemini calls go through our Cloudflare Worker — key never touches the client.
+// Set this to your deployed Worker URL after running: wrangler deploy
+const GEMINI_WORKER_URL = 'https://our-kitchen-gemini.jacobsiler.workers.dev/gemini';
 
-// Gemini API key — used for recipe OCR and Smart Scan
-let _pendingAfterGeminiKey = null;
-function getGeminiKey(){ return localStorage.getItem('ok-gemini-key')||''; }
-function saveGeminiKey(){
-  const key = (document.getElementById('gemini-key-input')||{}).value?.trim()||'';
-  const errEl = document.getElementById('gemini-key-error');
-  if(key.length < 10){
-    if(errEl){ errEl.textContent="That doesn't look like a valid Gemini API key."; errEl.style.display='block'; }
-    return;
-  }
-  if(errEl) errEl.style.display='none';
-  localStorage.setItem('ok-gemini-key', key);
-  closeModal('gemini-key-overlay');
-  if(_pendingAfterGeminiKey){ const fn=_pendingAfterGeminiKey; _pendingAfterGeminiKey=null; setTimeout(fn,200); }
-  else _proceedWithScan();
+async function callGemini(prompt, images = [], config = {}){
+  const body = { prompt, images, config };
+  const res = await fetch(GEMINI_WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(45000)
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error || 'Worker error ' + res.status);
+  if(!data.text) throw new Error('No text returned from Gemini.');
+  return data.text;
 }
-window.saveGeminiKey = saveGeminiKey;
-function clearGeminiKey(){ localStorage.removeItem('ok-gemini-key'); showToast('Gemini API key cleared.'); }
-window.clearGeminiKey = clearGeminiKey;
 
 // ── RECIPE OCR / SCAN ─────────────────────────────────────────────────────────
 let _scanImageBase64 = null;
 let _scanImageMime   = null;
-let _scanResult      = null; // parsed recipe JSON from Claude
+let _scanResult      = null;
 
 function openScanRecipe(){
   _scanImageBase64 = null;
   _scanImageMime   = null;
   _scanResult      = null;
-  if(!getGeminiKey()){
-    _pendingAfterGeminiKey = null;
-    const ki = document.getElementById('gemini-key-input');
-    const ke = document.getElementById('gemini-key-error');
-    if(ki) ki.value='';
-    if(ke) ke.style.display='none';
-    openModal('gemini-key-overlay');
-    return;
-  }
   _proceedWithScan();
 }
 window.openScanRecipe = openScanRecipe;
@@ -2957,38 +2969,15 @@ Rules:
 - Return ONLY the JSON object. Nothing else.`;
 
   try {
-    const body = {
-      contents: [{ parts: [
-        { inline_data: { mime_type: _scanImageMime, data: _scanImageBase64 } },
-        { text: prompt }
-      ]}],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
-    };
-
-    const response = await fetch(GEMINI_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(body), signal: AbortSignal.timeout(30000)
-    });
-
-    if(!response.ok){
-      const err = await response.json().catch(()=>({}));
-      const msg = err.error?.message || ('HTTP ' + response.status);
-      const status = response.status;
-      if(status === 429) throw new Error('Gemini quota exceeded — try again in a minute.');
-      if(status === 403) throw new Error('Gemini API error (403): ' + msg);
-      throw new Error('Gemini error ' + status + ': ' + msg);
-    }
-
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if(!rawText) throw new Error('No text returned from Gemini.');
-
+    const rawText = await callGemini(
+      prompt,
+      [{ data: _scanImageBase64, mimeType: _scanImageMime }],
+      { temperature: 0.1, maxOutputTokens: 2048 }
+    );
     const cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
     _scanResult = JSON.parse(cleaned);
-
     renderScanReview(_scanResult);
     showScanStep('review');
-
   } catch(e){
     showScanStep('upload');
     const errBanner = document.getElementById('scan-ocr-error');
@@ -3091,15 +3080,6 @@ let _ssResult = []; // parsed items from Gemini
 function openSmartScan(){
   _ssImages = [];
   _ssResult = [];
-  if(!getGeminiKey()){
-    _pendingAfterGeminiKey = () => openSmartScan();
-    const ki = document.getElementById('gemini-key-input');
-    const ke = document.getElementById('gemini-key-error');
-    if(ki) ki.value='';
-    if(ke) ke.style.display='none';
-    openModal('gemini-key-overlay');
-    return;
-  }
   ssShowStep('upload');
   renderSsThumbs();
   document.getElementById('btn-smart-scan-go').disabled = true;
@@ -3152,9 +3132,6 @@ async function runSmartScan(){
   if(!_ssImages.length){ showToast('Please choose at least one image.'); return; }
   ssShowStep('processing');
 
-  const geminiKey = getGeminiKey();
-  if(!geminiKey){ ssShowStep('upload'); showToast('No Gemini key — tap Scan again.'); return; }
-
   const cats = Object.keys(CAT_EMOJI_MAP).join(', ');
   const existingNames = STATE.items.map(i => i.name).join(', ') || 'none yet';
 
@@ -3176,40 +3153,14 @@ Rules:
 - Ignore non-food items unless clearly household (cleaning products etc).
 - Return ONLY the JSON array.`;
 
-  // Build parts: all images first, then the prompt text
-  const parts = [
-    ..._ssImages.map(img => ({ inline_data: { mime_type: img.mime, data: img.base64 } })),
-    { text: prompt }
-  ];
-
   try {
-    const body = {
-      contents: [{ parts }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
-    };
-
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), signal: AbortSignal.timeout(45000) }
-    );
-
-    if(!res.ok){
-      const err = await res.json().catch(()=>({}));
-      if(res.status===400 && (err.error?.message||'').includes('API_KEY')){ clearGeminiKey(); }
-      throw new Error(err.error?.message || 'Gemini error '+res.status);
-    }
-
-    const data = await res.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if(!rawText) throw new Error('No response from Gemini.');
-
+    const images = _ssImages.map(img => ({ data: img.base64, mimeType: img.mime }));
+    const rawText = await callGemini(prompt, images, { temperature: 0.2, maxOutputTokens: 4096 });
     const cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
     _ssResult = JSON.parse(cleaned);
     if(!Array.isArray(_ssResult)) throw new Error('Unexpected response format.');
-
     renderSmartScanReview();
     ssShowStep('review');
-
   } catch(e){
     ssShowStep('upload');
     showToast('⚠️ Scan failed: ' + (e.message||'unknown error'));
@@ -3746,9 +3697,7 @@ async function saveManualLog(){
 window.saveManualLog = saveManualLog;
 
 // ── RECEIPT OCR ───────────────────────────────────────────────────────────────
-// Baked-in Gemini key — users don't configure anything.
-const GEMINI_KEY = 'YOUR_GEMINI_KEY_HERE'; // replace with your key
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+// Uses the Cloudflare Worker proxy — no key needed on client.
 
 let _rscanBase64 = null;
 let _rscanMime   = null;
@@ -3817,32 +3766,11 @@ Rules:
 - Return ONLY the JSON object.`;
 
   try {
-    const body = {
-      contents: [{ parts: [
-        { inline_data: { mime_type: _rscanMime, data: _rscanBase64 } },
-        { text: prompt }
-      ]}],
-      generationConfig: { temperature: 0, maxOutputTokens: 2048 }
-    };
-
-    const response = await fetch(GEMINI_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(body), signal: AbortSignal.timeout(30000)
-    });
-
-    if(!response.ok){
-      const err = await response.json().catch(()=>({}));
-      const msg = err.error?.message || 'HTTP '+response.status;
-      const status = response.status;
-      if(status===429) throw new Error('Gemini quota exceeded — try again in a minute.');
-      if(status===403) throw new Error('Gemini API error (403): ' + msg);
-      throw new Error('Gemini error '+status+': '+msg);
-    }
-
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if(!rawText) throw new Error('No response from Gemini.');
-
+    const rawText = await callGemini(
+      prompt,
+      [{ data: _rscanBase64, mimeType: _rscanMime }],
+      { temperature: 0, maxOutputTokens: 2048 }
+    );
     const cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
     _rscanResult = JSON.parse(cleaned);
     if(!_rscanResult.items) _rscanResult.items = [];
@@ -6480,6 +6408,33 @@ function bindEvents(){
   window.renderFeedTab           = renderFeedTab;
   window.setFeedCooldown         = setFeedCooldown;
   window.manualSync              = manualSync;
+  // Functions used in dynamically-rendered innerHTML onclicks
+  window.setMode                 = setMode;
+  window.selectStatus            = selectStatus;
+  window.showToast               = showToast;
+  window.updateStatus            = updateStatus;
+  window.addRecipeIngredient     = addRecipeIngredient;
+  window.addRecipeStep           = addRecipeStep;
+  window.addCustomIngredient     = addCustomIngredient;
+  window.renderMealTab           = renderMealTab;
+  window.renderStorePickList     = renderStorePickList;
+  window.renderReceiptReview     = renderReceiptReview;
+  window.renderReceiptLines      = renderReceiptLines;
+  window.renderMlogItems         = renderMlogItems;
+  window.renderMealPickerList    = renderMealPickerList;
+  window.recalcLogTotal          = recalcLogTotal;
+  window.recalcMlogTotal         = recalcMlogTotal;
+  window.updateRscanTotal        = updateRscanTotal;
+  window.updateMlogCurrency      = updateMlogCurrency;
+  window.updateCurrency          = updateCurrency;
+  window.selectEmoji             = selectEmoji;
+  window.formatDate              = formatDate;
+  window.timeAgo                 = timeAgo;
+  window.storedFoodStatus        = storedFoodStatus;
+  window.entryEmoji              = entryEmoji;
+  window.currencySymbol          = currencySymbol;
+  window.showRscanStep           = showRscanStep;
+  window.switchIngTab            = switchIngTab;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
