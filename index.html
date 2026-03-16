@@ -2873,7 +2873,7 @@ window.selectEmoji = selectEmoji;
 // ── GEMINI PROXY ─────────────────────────────────────────────────────────────
 // All Gemini calls go through our Cloudflare Worker — key never touches the client.
 // Set this to your deployed Worker URL after running: wrangler deploy
-const GEMINI_WORKER_URL = 'https://our-kitchen-gemini.jacobsiler.workers.dev/gemini';
+const GEMINI_WORKER_URL = 'https://twilight-dew-e570.jacobdsiler.workers.dev';
 
 async function callGemini(prompt, images = [], config = {}){
   const body = { prompt, images, config };
