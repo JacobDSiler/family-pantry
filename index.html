@@ -1090,6 +1090,89 @@ window.addEventListener('unhandledrejection', function(e){
 
 <!-- STORE PICKER (in shopping mode) -->
 
+<!-- SHOP ADD ACTION SHEET -->
+<div class="overlay" id="shop-add-sheet-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Shopping</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin:8px 0 4px;">
+      <button onclick="closeModal('shop-add-sheet-overlay');openBasketScan();"
+        style="display:flex;align-items:center;gap:14px;padding:16px;background:#e8f2ec;border:1.5px solid var(--shop-accent);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.8rem;">🧺</span>
+        <div>
+          <div style="font-weight:700;color:var(--shop-accent);font-size:0.95rem;">Scan Basket</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;">Photo your basket, trolley or conveyor — AI ticks off your list</div>
+        </div>
+      </button>
+      <button onclick="closeModal('shop-add-sheet-overlay');openAddModal();"
+        style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.8rem;">✏️</span>
+        <div>
+          <div style="font-weight:700;font-size:0.95rem;">Add Item Manually</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;">Add a single item to your pantry</div>
+        </div>
+      </button>
+    </div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn btn-secondary" onclick="closeModal('shop-add-sheet-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- BASKET SCAN MODAL -->
+<div class="overlay" id="basket-scan-overlay" style="z-index:340;">
+  <div class="modal" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🧺 Scan Basket</div>
+
+    <!-- Upload step -->
+    <div id="bs-step-upload">
+      <div class="modal-sub" style="margin-bottom:14px;">Photo your basket, trolley, or checkout conveyor. Up to 4 images.</div>
+      <div id="bs-dropzone" onclick="document.getElementById('bs-file-input').click()"
+        style="border:2px dashed var(--shop-accent);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:#e8f2ec;margin-bottom:12px;">
+        <div style="font-size:2.2rem;margin-bottom:6px;">🧺</div>
+        <div style="font-weight:600;color:var(--shop-accent);font-size:0.95rem;">Tap to choose images</div>
+        <div style="font-size:0.75rem;color:var(--text2);margin-top:4px;">JPG, PNG, WEBP · up to 4 photos</div>
+      </div>
+      <input type="file" id="bs-file-input" accept="image/*" multiple style="display:none;" onchange="onBasketFilesChosen(event)" />
+      <div id="bs-thumbs" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+      <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--text2);line-height:1.6;margin-bottom:14px;">
+        💡 Works best with items clearly visible. Multiple angles of a full trolley work great.
+      </div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-secondary" onclick="closeModal('basket-scan-overlay')">Cancel</button>
+        <button class="btn btn-primary" id="btn-basket-scan-go" style="background:var(--shop-accent);" onclick="runBasketScan()" disabled>
+          🧺 Scan &amp; Tick Off
+        </button>
+      </div>
+    </div>
+
+    <!-- Processing step -->
+    <div id="bs-step-processing" style="display:none;text-align:center;padding:32px 0;">
+      <div style="font-size:2.5rem;margin-bottom:12px;">
+        <span class="scan-dot"></span><span class="scan-dot"></span><span class="scan-dot"></span>
+      </div>
+      <div style="font-weight:600;font-size:1rem;margin-bottom:6px;">Scanning your basket…</div>
+      <div style="color:var(--text2);font-size:0.82rem;">Matching items to your shopping list</div>
+    </div>
+
+    <!-- Review step -->
+    <div id="bs-step-review" style="display:none;">
+      <div class="modal-sub" id="bs-review-sub" style="margin-bottom:14px;"></div>
+      <div id="bs-review-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:52vh;overflow-y:auto;"></div>
+      <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--text2);margin-bottom:14px;">
+        ✅ <strong>On your list</strong> will be marked as Got It. <strong>Not on list</strong> will be added to your pantry as stocked. Uncheck anything wrong.
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="bsBackToUpload()">← Re-scan</button>
+        <button class="btn btn-primary" style="background:var(--shop-accent);" onclick="saveBasketScan()">
+          ✓ Confirm &amp; Tick Off
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- PANTRY ADD ACTION SHEET -->
 <div class="overlay" id="pantry-add-sheet-overlay">
   <div class="modal">
@@ -2583,6 +2666,7 @@ function handleMainAdd(){
   else if(STATE.mode==='meal')     openMealQuickAdd();
   else if(STATE.mode==='stored')   openAddStoredFood(null);
   else if(STATE.mode==='history')  openManualShopLog();
+  else if(STATE.mode==='shopping') openModal('shop-add-sheet-overlay');
   else                             openModal('pantry-add-sheet-overlay');
 }
 
@@ -3252,6 +3336,194 @@ function ssBackToUpload(){
   ssShowStep('upload');
 }
 window.ssBackToUpload = ssBackToUpload;
+
+// ── BASKET SCAN (shopping mode) ───────────────────────────────────────────────
+let _bsImages = [];
+let _bsResult = [];
+
+function openBasketScan(){
+  _bsImages = [];
+  _bsResult = [];
+  bsShowStep('upload');
+  renderBsThumbs();
+  document.getElementById('btn-basket-scan-go').disabled = true;
+  openModal('basket-scan-overlay');
+}
+window.openBasketScan = openBasketScan;
+
+function bsShowStep(step){
+  ['upload','processing','review'].forEach(s => {
+    document.getElementById('bs-step-'+s).style.display = s===step ? '' : 'none';
+  });
+}
+
+function onBasketFilesChosen(e){
+  const files = Array.from(e.target.files).slice(0, 4);
+  if(!files.length) return;
+  _bsImages = [];
+  Promise.all(files.map(file => new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      _bsImages.push({ base64: ev.target.result.split(',')[1], mime: file.type || 'image/jpeg' });
+      res();
+    };
+    reader.readAsDataURL(file);
+  }))).then(() => {
+    renderBsThumbs();
+    document.getElementById('btn-basket-scan-go').disabled = _bsImages.length === 0;
+  });
+}
+window.onBasketFilesChosen = onBasketFilesChosen;
+
+function renderBsThumbs(){
+  const el = document.getElementById('bs-thumbs');
+  if(!_bsImages.length){ el.style.display='none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = _bsImages.map((img, i) =>
+    `<div style="position:relative;">
+      <img src="data:${img.mime};base64,${img.base64}" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:2px solid var(--border);" />
+      <button onclick="removeBsImage(${i})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--out);color:#fff;border:none;font-size:0.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>`
+  ).join('');
+}
+window.removeBsImage = function(i){ _bsImages.splice(i,1); renderBsThumbs(); document.getElementById('btn-basket-scan-go').disabled=_bsImages.length===0; };
+
+async function runBasketScan(){
+  if(!_bsImages.length){ showToast('Please choose at least one image.'); return; }
+  bsShowStep('processing');
+
+  // Build context from current shopping list
+  const needItems = STATE.items.filter(i => i.status !== 'full');
+  const needNames = needItems.map(i => i.name).join(', ') || 'none';
+  const allNames  = STATE.items.map(i => i.name).join(', ') || 'none';
+
+  const prompt = `You are scanning a shopping basket, trolley, or checkout conveyor belt.
+
+The user's current shopping list (items they need): ${needNames}
+
+All items tracked in their pantry: ${allNames}
+
+Identify every food or household product you can see in the image(s).
+
+Return ONLY a JSON array — no markdown, no backticks, no explanation:
+[
+  { "name": "exact name matching shopping list if possible", "onList": true, "qty": 2 },
+  { "name": "Cadbury Dairy Milk", "onList": false, "qty": 1 }
+]
+
+Rules:
+- "onList": true if the item matches something on the shopping list above (use the EXACT same name from the list so it can be matched). false if it's not on the list.
+- "qty": how many of this item you can see. 1 if unsure.
+- If you see the same item multiple times, combine into one entry with the count.
+- Be specific but match list names exactly when possible.
+- Return ONLY the JSON array.`;
+
+  try {
+    const images = _bsImages.map(img => ({ data: img.base64, mimeType: img.mime }));
+    const rawText = await callGemini(prompt, images, { temperature: 0.1, maxOutputTokens: 4096 });
+    const cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+    _bsResult = JSON.parse(cleaned);
+    if(!Array.isArray(_bsResult)) throw new Error('Unexpected response format.');
+
+    // Annotate each with the actual pantry item if matched
+    const itemMap = new Map(STATE.items.map(i => [i.name.toLowerCase().trim(), i]));
+    _bsResult = _bsResult.map((r, idx) => {
+      const key = r.name.toLowerCase().trim();
+      let match = itemMap.get(key);
+      if(!match){
+        for(const [k, v] of itemMap){
+          if(k.includes(key) || key.includes(k)){ match = v; break; }
+        }
+      }
+      return { ...r, _idx: idx, _item: match || null };
+    });
+
+    renderBasketReview();
+    bsShowStep('review');
+  } catch(e){
+    bsShowStep('upload');
+    showToast('⚠️ Scan failed: ' + (e.message||'unknown error'));
+    console.error('Basket scan error:', e);
+  }
+}
+window.runBasketScan = runBasketScan;
+
+function renderBasketReview(){
+  const onList  = _bsResult.filter(r => r._item && r._item.status !== 'full');
+  const offList = _bsResult.filter(r => !r._item || r._item.status === 'full');
+
+  const got = onList.length;
+  const extra = offList.length;
+  document.getElementById('bs-review-sub').textContent =
+    `Found ${_bsResult.length} item${_bsResult.length!==1?'s':''} · ${got} on your list, ${extra} extra`;
+
+  function rowHtml(r){
+    const isOnList = !!(r._item && r._item.status !== 'full');
+    const badge = isOnList
+      ? `<span style="font-size:0.68rem;padding:2px 7px;border-radius:20px;background:#dcfce7;color:#166534;font-weight:600;">✓ ON LIST</span>`
+      : `<span style="font-size:0.68rem;padding:2px 7px;border-radius:20px;background:var(--surface2);color:var(--text2);font-weight:600;">EXTRA</span>`;
+    const qtyStr = r.qty > 1 ? ` · ×${r.qty}` : '';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:12px;cursor:pointer;">
+      <input type="checkbox" data-bs-idx="${r._idx}" checked style="width:18px;height:18px;cursor:pointer;flex-shrink:0;" />
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span style="font-weight:600;font-size:0.9rem;">${escHtml(r.name)}</span>
+          ${badge}
+        </div>
+        <div style="font-size:0.75rem;color:var(--text2);margin-top:2px;">
+          ${isOnList ? `Was: ${r._item.status}${qtyStr}` : `Will be added as stocked${qtyStr}`}
+        </div>
+      </div>
+    </label>`;
+  }
+
+  let html = '';
+  if(onList.length){
+    html += `<div style="font-size:0.72rem;font-weight:700;color:var(--shop-accent);text-transform:uppercase;letter-spacing:0.05em;padding:4px 0 2px;">Ticking off your list</div>`;
+    html += onList.map(rowHtml).join('');
+  }
+  if(offList.length){
+    if(onList.length) html += `<div style="height:8px;"></div>`;
+    html += `<div style="font-size:0.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;padding:4px 0 2px;">Extra items (not on list)</div>`;
+    html += offList.map(rowHtml).join('');
+  }
+  document.getElementById('bs-review-list').innerHTML = html;
+}
+
+async function saveBasketScan(){
+  const checked = new Set(
+    Array.from(document.querySelectorAll('[data-bs-idx]:checked')).map(el => parseInt(el.dataset.bsIdx))
+  );
+  const toSave = _bsResult.filter(r => checked.has(r._idx));
+  if(!toSave.length){ showToast('Nothing selected.'); return; }
+
+  let tickedOff = 0, added = 0;
+  for(const r of toSave){
+    if(r._item && r._item.status !== 'full'){
+      // Mark as full — got it!
+      await saveRecord('items', { ...r._item, status: 'full', qty: r.qty||r._item.qty||null, updated: Date.now() });
+      tickedOff++;
+    } else if(!r._item){
+      // Add as new pantry item, stocked
+      await saveRecord('items', {
+        id: uid(), name: r.name, category: 'Other',
+        status: 'full', qty: r.qty||null, maxQty: null,
+        estimatedPrice: null, updated: Date.now()
+      });
+      added++;
+    }
+  }
+
+  closeModal('basket-scan-overlay');
+  const parts = [];
+  if(tickedOff) parts.push(`${tickedOff} item${tickedOff!==1?'s':''} ticked off`);
+  if(added)     parts.push(`${added} new item${added!==1?'s':''} added`);
+  showToast('🧺 ' + parts.join(', '));
+}
+window.saveBasketScan = saveBasketScan;
+
+function bsBackToUpload(){ _bsResult=[]; bsShowStep('upload'); }
+window.bsBackToUpload = bsBackToUpload;
 function formatDate(ts){
   return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
@@ -3742,17 +4014,44 @@ Rules:
 - price: number only, no currency symbol.
 - total: the final amount paid (after any discounts). If not visible use null.
 - If a line has no price, omit it.
+- Keep item names SHORT (under 40 characters) to avoid truncation.
 - Return ONLY the JSON object.`;
 
   try {
     const rawText = await callGemini(
       prompt,
       [{ data: _rscanBase64, mimeType: _rscanMime }],
-      { temperature: 0, maxOutputTokens: 2048 }
+      { temperature: 0, maxOutputTokens: 8192 }
     );
-    const cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
-    _rscanResult = JSON.parse(cleaned);
+    let cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+
+    // Repair truncated JSON — close any open arrays/objects
+    try {
+      _rscanResult = JSON.parse(cleaned);
+    } catch(parseErr) {
+      // Attempt recovery: find the last complete item entry and close the structure
+      const lastBrace = cleaned.lastIndexOf('},');
+      const lastBraceNoComma = cleaned.lastIndexOf('}');
+      const cutPoint = Math.max(lastBrace, lastBraceNoComma);
+      if(cutPoint > 0){
+        const partial = cleaned.substring(0, cutPoint + 1);
+        // Close open structures
+        const repaired = partial + ']}';
+        try {
+          _rscanResult = JSON.parse(repaired);
+          showToast('⚠️ Receipt was long — some items at the end may be missing.');
+        } catch {
+          throw new Error('Could not parse receipt data. Try a clearer photo.');
+        }
+      } else {
+        throw parseErr;
+      }
+    }
+
     if(!_rscanResult.items) _rscanResult.items = [];
+
+    renderReceiptReview(_rscanResult);
+    showRscanStep('review');
 
     renderReceiptReview(_rscanResult);
     showRscanStep('review');
@@ -6276,7 +6575,9 @@ function bindEvents(){
     'scan-recipe-overlay',
     'cook-add-sheet-overlay',
     'pantry-add-sheet-overlay',
+    'shop-add-sheet-overlay',
     'smart-scan-overlay',
+    'basket-scan-overlay',
     'manual-log-overlay',
     'receipt-scan-overlay',
   ].forEach(id => {
@@ -6337,6 +6638,11 @@ function bindEvents(){
   window.runSmartScan            = runSmartScan;
   window.saveSmartScan           = saveSmartScan;
   window.ssBackToUpload          = ssBackToUpload;
+  window.openBasketScan          = openBasketScan;
+  window.onBasketFilesChosen     = onBasketFilesChosen;
+  window.runBasketScan           = runBasketScan;
+  window.saveBasketScan          = saveBasketScan;
+  window.bsBackToUpload          = bsBackToUpload;
   window.clampToOneEmoji         = clampToOneEmoji;
   window.closeModal              = closeModal;
   window.openModal               = openModal;
