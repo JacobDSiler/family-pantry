@@ -1133,13 +1133,17 @@ window.addEventListener('unhandledrejection', function(e){
     <!-- Upload step -->
     <div id="bs-step-upload">
       <div class="modal-sub" style="margin-bottom:14px;">Photo your basket, trolley, or checkout conveyor. Up to 4 images.</div>
-      <div id="bs-dropzone" onclick="document.getElementById('bs-file-input').click()"
-        style="border:2px dashed var(--shop-accent);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:#e8f2ec;margin-bottom:12px;">
-        <div style="font-size:2.2rem;margin-bottom:6px;">🧺</div>
-        <div style="font-weight:600;color:var(--shop-accent);font-size:0.95rem;">Tap to choose images</div>
-        <div style="font-size:0.75rem;color:var(--text2);margin-top:4px;">JPG, PNG, WEBP · up to 4 photos</div>
+      <div id="bs-pick-zone" style="margin-bottom:12px;">
+        <div id="bs-dropzone" onclick="document.getElementById('bs-file-input').click()"
+          style="border:2px dashed var(--shop-accent);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:#e8f2ec;">
+          <div style="font-size:2.2rem;margin-bottom:6px;">🧺</div>
+          <div style="font-weight:600;color:var(--shop-accent);font-size:0.95rem;">Tap to choose images</div>
+          <div style="font-size:0.75rem;color:var(--text2);margin-top:4px;">JPG, PNG, WEBP · up to 4 photos</div>
+        </div>
+        <div id="bs-camera-btns" style="display:none;gap:8px;margin-top:8px;"></div>
       </div>
       <input type="file" id="bs-file-input" accept="image/*" multiple style="display:none;" onchange="onBasketFilesChosen(event)" />
+      <input type="file" id="bs-camera-input" accept="image/*" capture="environment" multiple style="display:none;" onchange="onBasketFilesChosen(event)" />
       <div id="bs-thumbs" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
       <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--text2);line-height:1.6;margin-bottom:14px;">
         💡 Works best with items clearly visible. Multiple angles of a full trolley work great.
@@ -1217,14 +1221,19 @@ window.addEventListener('unhandledrejection', function(e){
     <div id="ss-step-upload">
       <div class="modal-sub" style="margin-bottom:14px;">Photo your fridge, freezer, or cupboard. Up to 4 images at once.</div>
 
-      <!-- Drop zone / image picker -->
-      <div id="ss-dropzone" onclick="document.getElementById('ss-file-input').click()"
-        style="border:2px dashed var(--accent);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:var(--accent-light,#fff8e7);margin-bottom:12px;transition:background 0.15s;">
-        <div style="font-size:2.2rem;margin-bottom:6px;">📷</div>
-        <div style="font-weight:600;color:var(--accent);font-size:0.95rem;">Tap to choose images</div>
-        <div style="font-size:0.75rem;color:var(--text2);margin-top:4px;">JPG, PNG, WEBP · up to 4 photos</div>
+      <!-- Camera / library picker -->
+      <div id="ss-pick-zone" style="margin-bottom:12px;">
+        <div id="ss-dropzone" onclick="document.getElementById('ss-file-input').click()"
+          style="border:2px dashed var(--accent);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:var(--accent-light,#fff8e7);transition:background 0.15s;">
+          <div style="font-size:2.2rem;margin-bottom:6px;">📷</div>
+          <div style="font-weight:600;color:var(--accent);font-size:0.95rem;">Tap to choose images</div>
+          <div style="font-size:0.75rem;color:var(--text2);margin-top:4px;">JPG, PNG, WEBP · up to 4 photos</div>
+        </div>
+        <!-- Camera buttons injected by JS when camera detected -->
+        <div id="ss-camera-btns" style="display:none;gap:8px;margin-top:8px;"></div>
       </div>
       <input type="file" id="ss-file-input" accept="image/*" multiple style="display:none;" onchange="onSmartScanFilesChosen(event)" />
+      <input type="file" id="ss-camera-input" accept="image/*" capture="environment" multiple style="display:none;" onchange="onSmartScanFilesChosen(event)" />
 
       <!-- Thumbnails -->
       <div id="ss-thumbs" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
@@ -1451,12 +1460,14 @@ window.addEventListener('unhandledrejection', function(e){
     <div id="rscan-step-upload">
       <div class="modal-sub">Photo or screenshot of your receipt — full receipt in frame.</div>
       <div id="rscan-drop-zone" onclick="document.getElementById('rscan-file-input').click()"
-        style="border:2px dashed var(--hist-accent);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:#f5f0ff;margin-bottom:14px;">
+        style="border:2px dashed var(--hist-accent);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:#f5f0ff;margin-bottom:8px;">
         <div style="font-size:2.5rem;margin-bottom:8px;">🧾</div>
         <div style="font-family:'Fraunces',serif;font-size:1rem;color:var(--hist-accent);font-weight:700;">Tap to choose image</div>
         <div style="font-size:0.78rem;color:var(--text2);margin-top:4px;">JPG, PNG, WEBP</div>
       </div>
+      <div id="rscan-camera-btns" style="display:none;gap:8px;margin-bottom:12px;"></div>
       <input type="file" id="rscan-file-input" accept="image/*" style="display:none;" onchange="onReceiptFileChosen(event)" />
+      <input type="file" id="rscan-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="onReceiptFileChosen(event)" />
       <div id="rscan-preview-wrap" style="display:none;margin-bottom:14px;">
         <img id="rscan-preview-img" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;border:1.5px solid var(--border);" />
         <button class="btn btn-secondary" style="margin-top:8px;font-size:0.8rem;padding:8px 14px;" onclick="document.getElementById('rscan-file-input').click()">Change image</button>
@@ -1614,12 +1625,14 @@ window.addEventListener('unhandledrejection', function(e){
       <div class="modal-sub">Take a photo, upload an image, or use a PDF screenshot.</div>
 
       <div id="scan-drop-zone" onclick="document.getElementById('scan-file-input').click()"
-        style="border:2px dashed var(--cook-accent);border-radius:14px;padding:32px 20px;text-align:center;cursor:pointer;margin:16px 0;background:var(--cook-light);transition:background 0.15s;">
+        style="border:2px dashed var(--cook-accent);border-radius:14px;padding:32px 20px;text-align:center;cursor:pointer;margin:16px 0 8px;background:var(--cook-light);transition:background 0.15s;">
         <div style="font-size:2.5rem;margin-bottom:8px;">📷</div>
         <div style="font-weight:600;color:var(--cook-accent);margin-bottom:4px;">Tap to choose image</div>
         <div style="font-size:0.78rem;color:var(--text2);">Photo, screenshot, or PDF image · JPG, PNG, WEBP</div>
       </div>
+      <div id="scan-camera-btns" style="display:none;gap:8px;margin-bottom:12px;"></div>
       <input type="file" id="scan-file-input" accept="image/*" style="display:none;" onchange="onScanFileChosen(this)" />
+      <input type="file" id="scan-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="onScanFileChosen(this)" />
 
       <div id="scan-preview-wrap" style="display:none;margin-bottom:14px;text-align:center;">
         <img id="scan-preview-img" style="max-width:100%;max-height:260px;border-radius:10px;border:1.5px solid var(--border);" />
@@ -2976,10 +2989,14 @@ function _proceedWithScan(){
   _scanResult      = null;
   document.getElementById('scan-file-input').value = '';
   document.getElementById('scan-preview-wrap').style.display = 'none';
-  // Clear previous error
   const errBanner = document.getElementById('scan-ocr-error');
   if(errBanner){ errBanner.style.display='none'; errBanner.textContent=''; }
   document.getElementById('btn-scan-extract').disabled = true;
+  const dz = document.getElementById('scan-drop-zone');
+  const cb = document.getElementById('scan-camera-btns');
+  if(dz) dz.style.display='';
+  if(cb){ cb.style.display='none'; cb.innerHTML=''; }
+  initScanCameraUI('scan-drop-zone','scan-camera-btns','scan-file-input','scan-camera-input','var(--cook-accent)');
   showScanStep('upload');
   openModal('scan-recipe-overlay');
 }
@@ -3151,6 +3168,12 @@ function openSmartScan(){
   ssShowStep('upload');
   renderSsThumbs();
   document.getElementById('btn-smart-scan-go').disabled = true;
+  // Reset dropzone visibility before re-checking camera
+  const dz = document.getElementById('ss-dropzone');
+  const cb = document.getElementById('ss-camera-btns');
+  if(dz) dz.style.display='';
+  if(cb){ cb.style.display='none'; cb.innerHTML=''; }
+  initScanCameraUI('ss-dropzone','ss-camera-btns','ss-file-input','ss-camera-input','var(--accent)');
   openModal('smart-scan-overlay');
 }
 window.openSmartScan = openSmartScan;
@@ -3342,7 +3365,54 @@ function ssBackToUpload(){
 }
 window.ssBackToUpload = ssBackToUpload;
 
-// ── BASKET SCAN (shopping mode) ───────────────────────────────────────────────
+// ── CAMERA DETECTION ─────────────────────────────────────────────────────────
+// Detects whether the device has a camera and injects "📷 Take Photo" +
+// "🖼 Choose from Library" buttons into scan modals. Falls back gracefully
+// to the single tap-zone on desktop/devices without a camera.
+
+let _hasCamera = null; // null=unknown, true/false after first check
+
+async function detectCamera(){
+  if(_hasCamera !== null) return _hasCamera;
+  try {
+    if(!navigator.mediaDevices?.enumerateDevices) return (_hasCamera = false);
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    _hasCamera = devices.some(d => d.kind === 'videoinput');
+  } catch { _hasCamera = false; }
+  return _hasCamera;
+}
+
+// Inject camera/library buttons into a scan modal's button container.
+// dropzoneId  — the existing tap-zone div (hidden when camera available)
+// cameraBtnsId — the empty div to fill with buttons
+// fileInputId  — input[type=file] (no capture) for library
+// cameraInputId — input[type=file] capture="environment" for camera
+// accentColor — CSS colour string for the camera button
+async function initScanCameraUI(dropzoneId, cameraBtnsId, fileInputId, cameraInputId, accentColor){
+  const hasCamera = await detectCamera();
+  const btnsEl = document.getElementById(cameraBtnsId);
+  const dropEl = document.getElementById(dropzoneId);
+  if(!btnsEl || !dropEl) return;
+  if(!hasCamera){ btnsEl.style.display='none'; return; }
+
+  // Hide the big single dropzone, show two clean buttons instead
+  dropEl.style.display = 'none';
+  btnsEl.style.display = 'flex';
+  btnsEl.innerHTML = `
+    <button onclick="document.getElementById('${cameraInputId}').click()"
+      style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:18px 12px;
+             background:${accentColor};color:#fff;border:none;border-radius:14px;cursor:pointer;
+             font-size:0.92rem;font-weight:700;font-family:'DM Sans',sans-serif;">
+      📷 Take Photo
+    </button>
+    <button onclick="document.getElementById('${fileInputId}').click()"
+      style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:18px 12px;
+             background:var(--surface2);color:var(--text1);border:1.5px solid var(--border);
+             border-radius:14px;cursor:pointer;font-size:0.92rem;font-weight:700;
+             font-family:'DM Sans',sans-serif;">
+      🖼 Library
+    </button>`;
+}
 let _bsImages = [];
 let _bsResult = [];
 
@@ -3352,6 +3422,11 @@ function openBasketScan(){
   bsShowStep('upload');
   renderBsThumbs();
   document.getElementById('btn-basket-scan-go').disabled = true;
+  const dz = document.getElementById('bs-dropzone');
+  const cb = document.getElementById('bs-camera-btns');
+  if(dz) dz.style.display='';
+  if(cb){ cb.style.display='none'; cb.innerHTML=''; }
+  initScanCameraUI('bs-dropzone','bs-camera-btns','bs-file-input','bs-camera-input','var(--shop-accent)');
   openModal('basket-scan-overlay');
 }
 window.openBasketScan = openBasketScan;
@@ -4020,6 +4095,11 @@ function openReceiptScan(logId){
   document.getElementById('rscan-error').style.display = 'none';
   document.getElementById('rscan-file-input').value = '';
   document.getElementById('btn-rscan-extract').disabled = true;
+  const dz = document.getElementById('rscan-drop-zone');
+  const cb = document.getElementById('rscan-camera-btns');
+  if(dz) dz.style.display='';
+  if(cb){ cb.style.display='none'; cb.innerHTML=''; }
+  initScanCameraUI('rscan-drop-zone','rscan-camera-btns','rscan-file-input','rscan-camera-input','var(--hist-accent)');
   showRscanStep('upload');
   openModal('receipt-scan-overlay');
 }
