@@ -841,7 +841,12 @@ window.addEventListener('unhandledrejection', function(e){
       <div class="etb-amount" id="etb-amount">—</div>
       <div class="etb-note" id="etb-note"></div>
     </div>
-    <button class="log-shop-btn" id="btn-log-shop">Log This Shop</button>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+      <button class="log-shop-btn" id="btn-log-shop">Log This Shop</button>
+      <button class="log-shop-btn" onclick="syncAllPrices()" style="background:rgba(255,255,255,0.2);font-size:0.72rem;padding:5px 12px;" title="Sync estimated prices from all shop logs">
+        💰 Update Prices
+      </button>
+    </div>
   </div>
 
   <div id="items-container"></div>
@@ -3941,11 +3946,62 @@ async function saveManualLog(){
     currency: storeCurrency,
   };
   await saveRecord('shops', shopLog);
+
+  // Sync prices from this log into pantry items
+  const updated = await syncPricesFromLog(logItems, storeId);
+
   closeModal('manual-log-overlay');
-  showToast('Shop log saved!');
+  showToast(`Shop log saved! ${updated} price${updated!==1?'s':''} updated.`);
   setMode('history');
 }
 window.saveManualLog = saveManualLog;
+
+// ── PRICE SYNC ────────────────────────────────────────────────────────────────
+// Matches log items against pantry items by name and updates estimatedPrice
+// and storePrices[storeId]. Returns count of items updated.
+async function syncPricesFromLog(logItems, storeId){
+  let count = 0;
+  for(const li of logItems){
+    if(!li.actualPrice) continue;
+    const name = (li.itemName||li.name||'').toLowerCase().trim();
+    if(!name) continue;
+
+    // Find matching pantry item — exact first, then partial
+    let item = STATE.items.find(i => i.name.toLowerCase().trim() === name);
+    if(!item) item = STATE.items.find(i =>
+      i.name.toLowerCase().includes(name) || name.includes(i.name.toLowerCase().trim())
+    );
+    if(!item) continue;
+
+    const updated = { ...item, updated: Date.now() };
+    // Weighted average: 70% old, 30% new (converges smoothly over time)
+    const old = updated.estimatedPrice || li.actualPrice;
+    updated.estimatedPrice = Number((old * 0.7 + li.actualPrice * 0.3).toFixed(2));
+
+    // Store-specific price (exact)
+    if(storeId){
+      if(!updated.storePrices) updated.storePrices = {};
+      updated.storePrices[storeId] = li.actualPrice;
+    }
+
+    await saveRecord('items', updated);
+    count++;
+  }
+  return count;
+}
+
+// Sync prices from ALL historical shop logs — called by "Update Prices" button
+async function syncAllPrices(){
+  const logs = [...STATE.shopLogs].sort((a,b) => a.date - b.date); // oldest first so newest wins
+  let total = 0;
+  for(const log of logs){
+    const items = (log.items||[]).filter(i => i.bought !== false);
+    total += await syncPricesFromLog(items, log.storeId||null);
+  }
+  showToast(`✅ Prices updated from ${logs.length} shop log${logs.length!==1?'s':''}. ${total} item${total!==1?'s':''} updated.`);
+  render();
+}
+window.syncAllPrices = syncAllPrices;
 
 // ── RECEIPT OCR ───────────────────────────────────────────────────────────────
 // Uses the Cloudflare Worker proxy — no key needed on client.
@@ -4163,9 +4219,10 @@ function applyReceiptScan(){
       updatedLog.storeName = _rscanResult.storeName;
     }
 
-    saveRecord('shops', updatedLog).then(()=>{
+    saveRecord('shops', updatedLog).then(async ()=>{
+      await syncPricesFromLog(updatedItems, log.storeId||null);
       closeModal('receipt-scan-overlay');
-      showToast('Receipt applied to log!');
+      showToast('Receipt applied to log — prices updated!');
       renderHistoryTab();
     });
   }
@@ -4729,25 +4786,16 @@ async function saveShopLog(){
   };
   await saveRecord('shops', shopLog);
 
-  // Update item prices + mark bought items as full
-  for(const li of logItems){
-    if(!li.bought) continue;
-    const item=STATE.items.find(i=>i.id===li.itemId);
-    if(!item) continue;
-    const updated={...item, status:'full', updated:Date.now()};
-    if(li.actualPrice&&STATE.selectedStoreId){
-      if(!updated.storePrices) updated.storePrices={};
-      updated.storePrices[STATE.selectedStoreId]=li.actualPrice;
-    }
-    if(li.actualPrice){
-      const old=updated.estimatedPrice||li.actualPrice;
-      updated.estimatedPrice=Number(((old+li.actualPrice)/2).toFixed(2));
-    }
-    await saveRecord('items', updated);
+  // Sync prices + mark bought items as full using shared helper
+  const boughtItems = logItems.filter(i=>i.bought);
+  for(const li of boughtItems){
+    const item = STATE.items.find(i=>i.id===li.itemId);
+    if(item) await saveRecord('items', {...item, status:'full', updated:Date.now()});
   }
+  await syncPricesFromLog(boughtItems, STATE.selectedStoreId||null);
 
   closeModal('log-shop-overlay');
-  alert(`Shop logged! ${logItems.filter(i=>i.bought).length} items marked as stocked.`);
+  alert(`Shop logged! ${boughtItems.length} items marked as stocked.`);
   setMode('history');
 }
 
