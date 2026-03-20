@@ -1332,6 +1332,63 @@ window.addEventListener('unhandledrejection', function(e){
   </div>
 </div>
 
+<!-- RECIPE SHARE MODAL -->
+<div class="overlay" id="recipe-share-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="recipe-share-title">Share Recipe</div>
+    <div class="modal-sub" id="recipe-share-sub" style="margin-bottom:16px;"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+
+      <!-- WhatsApp -->
+      <button id="share-btn-whatsapp" onclick="doShareVia('whatsapp')"
+        style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:#e7f9ee;border:1.5px solid #25D366;border-radius:14px;cursor:pointer;font-size:0.88rem;font-weight:600;color:#128C7E;">
+        <span style="font-size:1.4rem;">💬</span> WhatsApp
+      </button>
+
+      <!-- Facebook -->
+      <button id="share-btn-facebook" onclick="doShareVia('facebook')"
+        style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:#e7edf8;border:1.5px solid #1877F2;border-radius:14px;cursor:pointer;font-size:0.88rem;font-weight:600;color:#1877F2;">
+        <span style="font-size:1.4rem;">📘</span> Facebook
+      </button>
+
+      <!-- Messenger -->
+      <button id="share-btn-messenger" onclick="doShareVia('messenger')"
+        style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:#edf0fb;border:1.5px solid #0084FF;border-radius:14px;cursor:pointer;font-size:0.88rem;font-weight:600;color:#0084FF;">
+        <span style="font-size:1.4rem;">💙</span> Messenger
+      </button>
+
+      <!-- Email -->
+      <button id="share-btn-email" onclick="doShareVia('email')"
+        style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:#f5f5f5;border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:0.88rem;font-weight:600;color:var(--text1);">
+        <span style="font-size:1.4rem;">📧</span> Email
+      </button>
+
+      <!-- SMS / Messages -->
+      <button id="share-btn-sms" onclick="doShareVia('sms')"
+        style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:#e7f9ee;border:1.5px solid #34C759;border-radius:14px;cursor:pointer;font-size:0.88rem;font-weight:600;color:#1a7a35;">
+        <span style="font-size:1.4rem;">💬</span> Messages
+      </button>
+
+      <!-- X / Twitter -->
+      <button id="share-btn-twitter" onclick="doShareVia('twitter')"
+        style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:#f5f5f5;border:1.5px solid #000;border-radius:14px;cursor:pointer;font-size:0.88rem;font-weight:600;color:#000;">
+        <span style="font-size:1.4rem;">𝕏</span> X / Twitter
+      </button>
+
+    </div>
+
+    <!-- Copy to clipboard — full width -->
+    <button id="share-btn-copy" onclick="doShareVia('copy')"
+      style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:var(--cook-accent);color:#fff;border:none;border-radius:14px;cursor:pointer;font-size:0.92rem;font-weight:700;margin-bottom:10px;">
+      📋 Copy to Clipboard
+    </button>
+
+    <button class="btn btn-secondary" style="width:100%;" onclick="closeModal('recipe-share-overlay')">Cancel</button>
+  </div>
+</div>
+
 <!-- COOK ADD ACTION SHEET -->
 <div class="overlay" id="cook-add-sheet-overlay">
   <div class="modal">
@@ -5159,48 +5216,85 @@ function formatRecipeForSharing(r){
   return lines.join('\n');
 }
 
-async function shareRecipe(id){
+let _shareText = '';
+let _shareTitle = '';
+
+function openShareModal(title, text){
+  _shareText  = text;
+  _shareTitle = title;
+  document.getElementById('recipe-share-title').textContent = 'Share: ' + title;
+  document.getElementById('recipe-share-sub').textContent   = '';
+  openModal('recipe-share-overlay');
+}
+
+async function doShareVia(platform){
+  const text  = _shareText;
+  const title = _shareTitle;
+  const enc   = encodeURIComponent;
+
+  switch(platform){
+    case 'whatsapp':
+      window.open('https://wa.me/?text=' + enc(text), '_blank');
+      break;
+    case 'facebook':
+      // Facebook sharer only works well with a URL — share the text via copy prompt
+      try { await navigator.clipboard.writeText(text); } catch{}
+      window.open('https://www.facebook.com/sharer/sharer.php?quote=' + enc(title), '_blank');
+      showToast('📋 Recipe copied — paste it into Facebook!');
+      break;
+    case 'messenger':
+      // Messenger deep link — opens app on mobile
+      window.open('fb-messenger://share/?link=' + enc('https://kitchen.jacobsiler.com') + '&app_id=966242223397117', '_blank');
+      // Fallback: copy text
+      setTimeout(async () => {
+        try { await navigator.clipboard.writeText(text); showToast('📋 Copied — paste into Messenger!'); } catch{}
+      }, 500);
+      break;
+    case 'email':
+      window.location.href = 'mailto:?subject=' + enc(title) + '&body=' + enc(text);
+      break;
+    case 'sms':
+      // sms: works on both iOS and Android
+      window.location.href = 'sms:?body=' + enc(text);
+      break;
+    case 'twitter':
+      // Twitter/X has a 280 char limit — share a short teaser
+      const tweet = enc(`${title} — shared from Our Kitchen 🥕\n\n${text.substring(0, 200)}…`);
+      window.open('https://twitter.com/intent/tweet?text=' + tweet, '_blank');
+      break;
+    case 'copy':
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById('share-btn-copy').textContent = '✅ Copied!';
+        setTimeout(() => {
+          const btn = document.getElementById('share-btn-copy');
+          if(btn) btn.innerHTML = '📋 Copy to Clipboard';
+        }, 2000);
+        return; // don't close modal — let user see the confirmation
+      } catch {
+        showToast('⚠️ Could not copy — try selecting and copying manually.');
+      }
+      break;
+  }
+  closeModal('recipe-share-overlay');
+}
+window.doShareVia = doShareVia;
+
+function shareRecipe(id){
   const r = STATE.recipes.find(r=>r.id===id);
   if(!r){ showToast('Recipe not found.'); return; }
-  const text = formatRecipeForSharing(r);
-  const title = r.name;
-
-  if(navigator.share){
-    try {
-      await navigator.share({ title, text });
-      return;
-    } catch(e){
-      if(e.name === 'AbortError') return; // user cancelled — don't fall through
-    }
-  }
-  // Fallback: copy to clipboard
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast('📋 Recipe copied to clipboard!');
-  } catch {
-    showToast('⚠️ Could not share — try copying manually.');
-  }
+  openShareModal(r.name, formatRecipeForSharing(r));
 }
 window.shareRecipe = shareRecipe;
 
-async function shareSelectedRecipes(){
+function shareSelectedRecipes(){
   const checked = Array.from(document.querySelectorAll('.recipe-share-check:checked'));
   if(!checked.length){ showToast('Select at least one recipe to share.'); return; }
   const ids = checked.map(el => el.dataset.recipeId);
   const recipes = ids.map(id => STATE.recipes.find(r=>r.id===id)).filter(Boolean);
-  const text = recipes.map(r => formatRecipeForSharing(r)).join('\n\n' + '─'.repeat(30) + '\n\n');
+  const text  = recipes.map(r => formatRecipeForSharing(r)).join('\n\n' + '─'.repeat(30) + '\n\n');
   const title = recipes.length === 1 ? recipes[0].name : `${recipes.length} Recipes from Our Kitchen`;
-
-  if(navigator.share){
-    try { await navigator.share({ title, text }); return; }
-    catch(e){ if(e.name === 'AbortError') return; }
-  }
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast(`📋 ${recipes.length} recipe${recipes.length!==1?'s':''} copied to clipboard!`);
-  } catch {
-    showToast('⚠️ Could not share — try copying manually.');
-  }
+  openShareModal(title, text);
 }
 window.shareSelectedRecipes = shareSelectedRecipes;
 
@@ -7053,6 +7147,7 @@ function bindEvents(){
     'scan-recipe-overlay',
     'cook-add-sheet-overlay',
     'url-import-overlay',
+    'recipe-share-overlay',
     'pantry-add-sheet-overlay',
     'shop-add-sheet-overlay',
     'smart-scan-overlay',
@@ -7101,6 +7196,8 @@ function bindEvents(){
   window.shareRecipe             = shareRecipe;
   window.shareSelectedRecipes    = shareSelectedRecipes;
   window.toggleRecipeShareMode   = toggleRecipeShareMode;
+  window.doShareVia              = doShareVia;
+  window.openShareModal          = openShareModal;
   window.toggleSkipItem          = toggleSkipItem;
   window.clearSkipped            = clearSkipped;
   window.openAddStoredFood       = openAddStoredFood;
