@@ -213,6 +213,18 @@ body.mode-admin    .bottom-nav-add{pointer-events:none;opacity:0.25;}
 
 /* ── FILTER BAR ── */
 .filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;transition:background 0.3s,border-color 0.3s;}
+.search-bar-wrap{padding:10px 16px 0;background:var(--surface);transition:background 0.3s;}
+body.mode-shopping .search-bar-wrap{background:var(--shop-bg);}
+.search-bar-input{width:100%;padding:9px 14px 9px 36px;border:1.5px solid var(--border);border-radius:50px;font-size:0.88rem;background:var(--surface2);outline:none;box-sizing:border-box;transition:border-color 0.15s;}
+.search-bar-input:focus{border-color:var(--accent);}
+body.mode-shopping .search-bar-input:focus{border-color:var(--shop-accent);}
+.search-bar-inner{position:relative;}
+.search-bar-inner::before{content:'🔍';position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:0.85rem;pointer-events:none;}
+.search-bar-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:0.9rem;color:var(--text2);padding:2px 4px;display:none;}
+.search-not-found{margin:20px 16px;padding:16px;background:var(--surface2);border-radius:14px;text-align:center;}
+.search-not-found-title{font-weight:600;margin-bottom:4px;font-size:0.95rem;}
+.search-not-found-sub{font-size:0.78rem;color:var(--text2);margin-bottom:12px;}
+.search-highlight{background:rgba(255,200,0,0.35);border-radius:3px;}
 .filter-bar::-webkit-scrollbar{display:none;}
 body.mode-shopping .filter-bar{background:#e8f2ec;border-bottom-color:#c5dece;}
 body.mode-history .filter-bar{background:#ede8f7;border-bottom-color:#c9aff5;}
@@ -768,6 +780,13 @@ window.addEventListener('unhandledrejection', function(e){
   </div>
 </header>
 <div class="filter-bar" id="filter-bar"></div>
+<div class="search-bar-wrap" id="search-bar-wrap" style="display:none;">
+  <div class="search-bar-inner">
+    <input class="search-bar-input" id="search-bar-input" type="search" placeholder="Search items…"
+      oninput="onItemSearch(this.value)" autocomplete="off" autocorrect="off" spellcheck="false" />
+    <button class="search-bar-clear" id="search-bar-clear" onclick="clearItemSearch()">✕</button>
+  </div>
+</div>
 
 <!-- ── BOTTOM NAV ── -->
 <nav class="bottom-nav" id="bottom-nav">
@@ -1279,6 +1298,40 @@ window.addEventListener('unhandledrejection', function(e){
   </div>
 </div>
 
+<!-- URL RECIPE IMPORT MODAL -->
+<div class="overlay" id="url-import-overlay" style="z-index:340;">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔗 Import from URL</div>
+    <div class="modal-sub" style="margin-bottom:16px;">Paste a link from any recipe website — AllRecipes, BBC Good Food, Tasty, food blogs, anything.</div>
+
+    <div id="url-import-step-input">
+      <div class="form-group">
+        <label class="form-label">Recipe URL</label>
+        <input class="form-input" id="url-import-input" type="url"
+          placeholder="https://www.allrecipes.com/recipe/…"
+          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="onUrlImportInput()" />
+      </div>
+      <div id="url-import-error" style="display:none;font-size:0.78rem;color:var(--out);margin-bottom:10px;padding:8px 12px;background:#fff3f3;border-radius:8px;"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="closeModal('url-import-overlay')">Cancel</button>
+        <button class="btn btn-primary" id="btn-url-import-go" style="background:var(--cook-accent);" onclick="runUrlImport()" disabled>
+          🔗 Import Recipe
+        </button>
+      </div>
+    </div>
+
+    <div id="url-import-step-processing" style="display:none;text-align:center;padding:32px 0;">
+      <div style="font-size:2.5rem;margin-bottom:12px;">
+        <span class="scan-dot"></span><span class="scan-dot"></span><span class="scan-dot"></span>
+      </div>
+      <div style="font-weight:600;font-size:1rem;margin-bottom:6px;">Fetching recipe…</div>
+      <div id="url-import-processing-msg" style="color:var(--text2);font-size:0.82rem;">Reading the page and extracting the recipe</div>
+    </div>
+  </div>
+</div>
+
 <!-- COOK ADD ACTION SHEET -->
 <div class="overlay" id="cook-add-sheet-overlay">
   <div class="modal">
@@ -1291,6 +1344,14 @@ window.addEventListener('unhandledrejection', function(e){
         <div>
           <div style="font-weight:700;color:var(--cook-accent);font-size:0.95rem;">Scan a Recipe</div>
           <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;">Photo, screenshot or handwritten notes</div>
+        </div>
+      </button>
+      <button onclick="closeModal('cook-add-sheet-overlay');openUrlImport();"
+        style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--cook-light);border:1.5px solid var(--cook-accent);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.8rem;">🔗</span>
+        <div>
+          <div style="font-weight:700;color:var(--cook-accent);font-size:0.95rem;">Import from URL</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;">Paste any recipe link — AllRecipes, BBC Good Food, any site</div>
         </div>
       </button>
       <button onclick="closeModal('cook-add-sheet-overlay');openRecipeEdit(null);"
@@ -2001,6 +2062,7 @@ let STATE = {
   // filters
   pf: {needs:false,recent:true,alpha:false},
   sf: {needsOnly:false,recent:true,alpha:false,showSkipped:false},
+  itemSearch: '',   // live search query across pantry/shopping/stores/cook
   hf: {from:'',to:''},
   // edit state
   editingItemId: null,
@@ -2781,6 +2843,59 @@ function renderFilterBar(){
   }
 }
 
+function onItemSearch(val){
+  STATE.itemSearch = val.trim().toLowerCase();
+  const clearBtn = document.getElementById('search-bar-clear');
+  if(clearBtn) clearBtn.style.display = val ? 'block' : 'none';
+  render();
+}
+window.onItemSearch = onItemSearch;
+
+function clearItemSearch(){
+  STATE.itemSearch = '';
+  const inp = document.getElementById('search-bar-input');
+  const clearBtn = document.getElementById('search-bar-clear');
+  if(inp) inp.value = '';
+  if(clearBtn) clearBtn.style.display = 'none';
+  render();
+}
+window.clearItemSearch = clearItemSearch;
+
+function addItemAsOut(name){
+  const trimmed = name.trim();
+  if(!trimmed) return;
+  saveRecord('items', {
+    id: uid(), name: trimmed, category: 'Other',
+    status: 'out', qty: null, maxQty: null,
+    estimatedPrice: null, updated: Date.now()
+  }).then(() => {
+    clearItemSearch();
+    showToast(`➕ "${trimmed}" added as Out`);
+  });
+}
+window.addItemAsOut = addItemAsOut;
+
+function searchNotFoundHtml(query){
+  return `<div class="search-not-found">
+    <div class="search-not-found-title">No results for "${escHtml(query)}"</div>
+    <div class="search-not-found-sub">This item isn't in your pantry yet.</div>
+    <button class="btn btn-primary" style="background:var(--out);font-size:0.85rem;padding:10px 20px;"
+      onclick="addItemAsOut('${escHtml(query)}')">
+      ➕ Add "${escHtml(query)}" as Out
+    </button>
+  </div>`;
+}
+
+function highlightMatch(text, query){
+  if(!query) return escHtml(text);
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if(idx === -1) return escHtml(text);
+  return escHtml(text.substring(0, idx))
+    + `<span class="search-highlight">${escHtml(text.substring(idx, idx+query.length))}</span>`
+    + escHtml(text.substring(idx + query.length));
+}
+window.highlightMatch = highlightMatch;
+
 function toggleFilter(f){
   if(f==='recent'||f==='alpha'){STATE.pf.recent=f==='recent';STATE.pf.alpha=f==='alpha';}
   else STATE.pf[f]=!STATE.pf[f];
@@ -2797,6 +2912,21 @@ function toggleShopFilter(f){
 // ══════════════════════════════════════════════════════════════════════════════
 function render(){
   renderFilterBar();
+  const searchWrap = document.getElementById('search-bar-wrap');
+  const searchInp  = document.getElementById('search-bar-input');
+  const modesWithSearch = ['pantry','shopping','stores','cook','stored'];
+  const showSearch = modesWithSearch.includes(STATE.mode);
+  if(searchWrap) searchWrap.style.display = showSearch ? 'block' : 'none';
+  // Clear search when switching to a non-search mode
+  if(!showSearch && STATE.itemSearch){
+    STATE.itemSearch = '';
+    if(searchInp) searchInp.value = '';
+  }
+  if(searchInp) searchInp.placeholder = STATE.mode === 'cook' ? 'Search recipes…'
+    : STATE.mode === 'stores' ? 'Search stores…'
+    : STATE.mode === 'stored' ? 'Search stored food…'
+    : 'Search items…';
+
   document.getElementById('store-selector-bar').style.display = STATE.mode==='shopping'?'flex':'none';
   document.getElementById('est-total-bar').style.display = STATE.mode==='shopping'?'flex':'none';
 
@@ -2983,6 +3113,79 @@ function openScanRecipe(){
 }
 window.openScanRecipe = openScanRecipe;
 
+// ── URL RECIPE IMPORT ─────────────────────────────────────────────────────────
+function openUrlImport(){
+  document.getElementById('url-import-input').value = '';
+  document.getElementById('url-import-error').style.display = 'none';
+  document.getElementById('btn-url-import-go').disabled = true;
+  urlImportShowStep('input');
+  openModal('url-import-overlay');
+  setTimeout(() => document.getElementById('url-import-input').focus(), 300);
+}
+window.openUrlImport = openUrlImport;
+
+function urlImportShowStep(step){
+  document.getElementById('url-import-step-input').style.display      = step==='input'      ? '' : 'none';
+  document.getElementById('url-import-step-processing').style.display = step==='processing' ? '' : 'none';
+}
+
+function onUrlImportInput(){
+  const val = document.getElementById('url-import-input').value.trim();
+  document.getElementById('btn-url-import-go').disabled = !val.startsWith('http');
+  document.getElementById('url-import-error').style.display = 'none';
+}
+window.onUrlImportInput = onUrlImportInput;
+
+async function runUrlImport(){
+  const recipeUrl = document.getElementById('url-import-input').value.trim();
+  if(!recipeUrl){ return; }
+
+  urlImportShowStep('processing');
+  document.getElementById('url-import-processing-msg').textContent = 'Fetching ' + new URL(recipeUrl).hostname + '…';
+
+  try {
+    const res = await fetch(GEMINI_WORKER_URL.replace('/gemini', '/fetch-recipe'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeUrl }),
+      signal: AbortSignal.timeout(45000)
+    });
+
+    const data = await res.json().catch(() => ({ error: 'Worker returned unexpected response.' }));
+    if(!res.ok || data.error) throw new Error(data.error || 'Import failed (HTTP ' + res.status + ')');
+
+    // Parse the recipe JSON from Gemini's text response
+    let cleaned = data.text.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+
+    let result;
+    try {
+      result = JSON.parse(cleaned);
+    } catch {
+      const s = cleaned.indexOf('{'), e = cleaned.lastIndexOf('}');
+      if(s !== -1 && e > s) result = JSON.parse(cleaned.substring(s, e+1));
+      else throw new Error('Could not parse recipe data from that page.');
+    }
+
+    if(result.error) throw new Error(result.error);
+
+    // Reuse the existing scan review flow
+    closeModal('url-import-overlay');
+    _scanResult = result;
+    renderScanReview(result);
+    showScanStep('review');
+    openModal('scan-recipe-overlay');
+
+  } catch(e){
+    urlImportShowStep('input');
+    const errEl = document.getElementById('url-import-error');
+    errEl.textContent = '⚠️ ' + (e.message || 'Unknown error');
+    errEl.style.display = 'block';
+    console.error('URL import error:', e);
+  }
+}
+window.runUrlImport = runUrlImport;
+
 function _proceedWithScan(){
   _scanImageBase64 = null;
   _scanImageMime   = null;
@@ -3028,39 +3231,67 @@ async function runRecipeOCR(){
   if(!_scanImageBase64){ showToast('Please choose an image first.'); return; }
   showScanStep('processing');
 
-  const prompt = `Extract the recipe from this image and return ONLY a JSON object — no markdown, no backticks, no explanation.
+  const prompt = `Extract the recipe from this image and return ONLY a valid JSON object — no markdown, no backticks, no explanation, no trailing commas.
 
-The JSON must have exactly this shape:
+Return exactly this structure:
 {
   "name": "Recipe Name",
-  "description": "One-line tagline describing the dish",
-  "emoji": "single emoji that represents this dish",
-  "cookTime": "e.g. 35 min or 1 hr 20 min",
+  "description": "One-line tagline",
+  "emoji": "🍽",
+  "cookTime": "35 min",
   "ingredients": [
     { "qty": "2 cups", "name": "plain flour" },
     { "qty": "1 tsp", "name": "baking powder" }
   ],
   "steps": [
-    "Preheat the oven to 180°C.",
-    "Mix the flour and baking powder together."
+    "Preheat the oven to 180C.",
+    "Mix the flour and baking powder."
   ]
 }
 
 Rules:
-- ingredients: each has "qty" (quantity + unit) and "name" (ingredient only, no quantity).
-- steps: plain strings, one action per step. Split long compound steps.
-- cookTime: total time including prep. If not stated, estimate from the method.
-- If any field is not present use "" or [].
-- Return ONLY the JSON object. Nothing else.`;
+- ingredients: "qty" is quantity+unit only, "name" is the ingredient only with no quantity.
+- steps: plain strings, one action per step, no special characters like degree symbols.
+- cookTime: total time including prep, plain text only.
+- All string values must use straight double quotes. No trailing commas.
+- If any field is missing use empty string or empty array.
+- Return ONLY the JSON object, nothing else.`;
 
   try {
     const rawText = await callGemini(
       prompt,
       [{ data: _scanImageBase64, mimeType: _scanImageMime }],
-      { temperature: 0.1, maxOutputTokens: 2048 }
+      { temperature: 0, maxOutputTokens: 8192 }
     );
-    const cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
-    _scanResult = JSON.parse(cleaned);
+
+    // Strip markdown fences
+    let cleaned = rawText.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+
+    // Fix common Gemini JSON issues: trailing commas before } or ]
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+
+    // Attempt parse, with fallback repair
+    let result;
+    try {
+      result = JSON.parse(cleaned);
+    } catch(parseErr) {
+      // Try to extract just the JSON object portion
+      const objStart = cleaned.indexOf('{');
+      const objEnd = cleaned.lastIndexOf('}');
+      if(objStart !== -1 && objEnd !== -1 && objEnd > objStart){
+        try {
+          let extracted = cleaned.substring(objStart, objEnd + 1);
+          extracted = extracted.replace(/,\s*([}\]])/g, '$1');
+          result = JSON.parse(extracted);
+        } catch {
+          throw new Error('Could not read recipe data — try a clearer photo or better lighting.');
+        }
+      } else {
+        throw new Error('Could not read recipe data — try a clearer photo or better lighting.');
+      }
+    }
+
+    _scanResult = result;
     renderScanReview(_scanResult);
     showScanStep('review');
   } catch(e){
@@ -3686,7 +3917,18 @@ function renderPantry(){
   renderStats();
   const container=document.getElementById('items-container');
   if(!STATE.items.length){container.innerHTML=empty('🥕','Your kitchen is empty!','Tap "+ Add" to start tracking your pantry.');return;}
+  const q = STATE.itemSearch;
   let html='';
+
+  if(q){
+    // Search mode — flat list across all categories
+    const matches = STATE.items.filter(i => i.name.toLowerCase().includes(q) || (i.category||'').toLowerCase().includes(q));
+    if(!matches.length){ container.innerHTML = searchNotFoundHtml(q); return; }
+    html = matches.map(i => itemCard(i, false)).join('');
+    container.innerHTML = `<div style="padding:6px 0 2px;font-size:0.75rem;color:var(--text2);">${matches.length} result${matches.length!==1?'s':''} for "${escHtml(q)}"</div>` + html;
+    return;
+  }
+
   for(const cat of getCatsWithItems()){
     let list=getCatItems(cat);
     if(STATE.pf.needs) list=list.filter(i=>i.status!=='full');
@@ -3735,6 +3977,15 @@ function renderShoppingTab(){
 
   const container=document.getElementById('items-container');
   if(!STATE.items.length){container.innerHTML=empty('🛒','Nothing tracked yet!','Tap "+ Add" to add items.');return;}
+
+  const q = STATE.itemSearch;
+  if(q){
+    const matches = STATE.items.filter(i => i.name.toLowerCase().includes(q) || (i.category||'').toLowerCase().includes(q));
+    if(!matches.length){ container.innerHTML = searchNotFoundHtml(q); return; }
+    container.innerHTML = `<div style="padding:6px 0 2px;font-size:0.75rem;color:var(--text2);">${matches.length} result${matches.length!==1?'s':''} for "${escHtml(q)}"</div>`
+      + matches.map(i => i.status!=='full' ? shoppingItemCard(i) : itemCard(i,false)).join('');
+    return;
+  }
 
   let html='';
   for(const cat of getCatsWithItems()){
@@ -3805,8 +4056,12 @@ function renderStoresTab(){
     container.innerHTML=empty('🏪','No stores yet','Tap "+ Add" to add your favourite shops. Store-specific price estimates will appear here.');
     return;
   }
+  const q = STATE.itemSearch;
+  let stores = STATE.stores;
+  if(q) stores = stores.filter(s => s.name.toLowerCase().includes(q) || (s.city||'').toLowerCase().includes(q));
+
   let html='';
-  for(const store of STATE.stores){
+  for(const store of stores){
     const logs=STATE.shopLogs.filter(l=>l.storeId===store.id);
     const avgTotal=logs.length?logs.reduce((s,l)=>s+(l.actualTotal||l.estimatedTotal||0),0)/logs.length:null;
     const lastVisit=logs.length?Math.max(...logs.map(l=>l.date)):null;
@@ -3826,6 +4081,7 @@ function renderStoresTab(){
       </div>
     </div>`;
   }
+  if(!html && q) html = `<div class="search-not-found"><div class="search-not-found-title">No stores matching "${escHtml(q)}"</div></div>`;
   container.innerHTML=html;
 }
 
@@ -4882,22 +5138,113 @@ async function saveShopLog(){
 // ══════════════════════════════════════════════════════════════════════════════
 // COOK TAB
 // ══════════════════════════════════════════════════════════════════════════════
-function renderCookTab(){
+function formatRecipeForSharing(r){
+  const lines = [];
+  lines.push(`${r.emoji||'🍽️'} ${r.name}`);
+  if(r.description) lines.push(r.description);
+  lines.push('');
+  if(r.cookTime) lines.push(`⏱ ${r.cookTime}`);
+  lines.push('');
+  if((r.ingredients||[]).length){
+    lines.push('🧺 INGREDIENTS');
+    (r.ingredients).forEach(i => lines.push(`  ${i.qty ? i.qty+' — ' : ''}${i.name}`));
+    lines.push('');
+  }
+  if((r.steps||[]).length){
+    lines.push('📋 METHOD');
+    (r.steps).forEach((s, idx) => lines.push(`  ${idx+1}. ${s}`));
+    lines.push('');
+  }
+  lines.push('— Shared from Our Kitchen 🥕');
+  return lines.join('\n');
+}
+
+async function shareRecipe(id){
+  const r = STATE.recipes.find(r=>r.id===id);
+  if(!r){ showToast('Recipe not found.'); return; }
+  const text = formatRecipeForSharing(r);
+  const title = r.name;
+
+  if(navigator.share){
+    try {
+      await navigator.share({ title, text });
+      return;
+    } catch(e){
+      if(e.name === 'AbortError') return; // user cancelled — don't fall through
+    }
+  }
+  // Fallback: copy to clipboard
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('📋 Recipe copied to clipboard!');
+  } catch {
+    showToast('⚠️ Could not share — try copying manually.');
+  }
+}
+window.shareRecipe = shareRecipe;
+
+async function shareSelectedRecipes(){
+  const checked = Array.from(document.querySelectorAll('.recipe-share-check:checked'));
+  if(!checked.length){ showToast('Select at least one recipe to share.'); return; }
+  const ids = checked.map(el => el.dataset.recipeId);
+  const recipes = ids.map(id => STATE.recipes.find(r=>r.id===id)).filter(Boolean);
+  const text = recipes.map(r => formatRecipeForSharing(r)).join('\n\n' + '─'.repeat(30) + '\n\n');
+  const title = recipes.length === 1 ? recipes[0].name : `${recipes.length} Recipes from Our Kitchen`;
+
+  if(navigator.share){
+    try { await navigator.share({ title, text }); return; }
+    catch(e){ if(e.name === 'AbortError') return; }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(`📋 ${recipes.length} recipe${recipes.length!==1?'s':''} copied to clipboard!`);
+  } catch {
+    showToast('⚠️ Could not share — try copying manually.');
+  }
+}
+window.shareSelectedRecipes = shareSelectedRecipes;
+
+function toggleRecipeShareMode(){
+  const container = document.getElementById('items-container');
+  const bar = document.getElementById('recipe-share-bar');
+  const isActive = container.classList.toggle('recipe-share-mode');
+  if(bar) bar.style.display = isActive ? 'flex' : 'none';
+  // Re-render to show/hide checkboxes
+  renderCookTab(isActive);
+}
+window.toggleRecipeShareMode = toggleRecipeShareMode;
+
+function renderCookTab(shareMode=false){
   document.getElementById('stats-bar').style.display='none';
   document.getElementById('filter-bar').innerHTML='';
   const container=document.getElementById('items-container');
-  const scanBtn = `<div style="margin-bottom:14px;">
-    <button class="btn" onclick="openScanRecipe()" style="width:100%;background:var(--cook-accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:14px;font-size:0.95rem;font-weight:600;border:none;cursor:pointer;box-shadow:0 3px 10px rgba(181,69,27,0.3);">
-      📷 Scan a Recipe
-      <span style="font-size:0.72rem;font-weight:400;opacity:0.85;">photo · PDF · handwritten</span>
-    </button>
-  </div>`;
+
+  const topBar = `
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="btn" onclick="openScanRecipe()" style="flex:1;background:var(--cook-accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:14px;font-size:0.95rem;font-weight:600;border:none;cursor:pointer;box-shadow:0 3px 10px rgba(181,69,27,0.3);">
+        📷 Scan a Recipe
+        <span style="font-size:0.72rem;font-weight:400;opacity:0.85;">photo · PDF · handwritten</span>
+      </button>
+      ${STATE.recipes.length ? `<button onclick="toggleRecipeShareMode()" title="Share recipes"
+        style="padding:13px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:1.1rem;flex-shrink:0;">
+        ${shareMode ? '✕' : '↗️'}
+      </button>` : ''}
+    </div>
+    ${shareMode ? `<div id="recipe-share-bar" style="display:flex;gap:8px;margin-bottom:12px;align-items:center;background:var(--cook-light);border:1.5px solid var(--cook-accent);border-radius:12px;padding:10px 12px;">
+      <span style="flex:1;font-size:0.82rem;color:var(--cook-accent);font-weight:600;">Tap recipes to select, then share</span>
+      <button onclick="shareSelectedRecipes()" class="btn btn-primary" style="background:var(--cook-accent);padding:8px 14px;font-size:0.82rem;">↗️ Share Selected</button>
+    </div>` : ''}`;
+
   if(!STATE.recipes.length){
-    container.innerHTML = scanBtn + empty('👨‍🍳','No recipes yet','Scan a recipe photo or tap "+ Add" to create one manually.');
+    container.innerHTML = topBar + empty('👨‍🍳','No recipes yet','Scan a recipe photo or tap "+ Add" to create one manually.');
     return;
   }
-  container.innerHTML = scanBtn + STATE.recipes.map(r=>`
-    <div class="recipe-card" onclick="openRecipeDetail('${r.id}')">
+
+  container.innerHTML = topBar + STATE.recipes.map(r=>`
+    <div class="recipe-card" style="position:relative;" onclick="${shareMode ? '' : `openRecipeDetail('${r.id}')`}">
+      ${shareMode ? `<label style="position:absolute;top:12px;right:12px;z-index:2;cursor:pointer;" onclick="event.stopPropagation()">
+        <input type="checkbox" class="recipe-share-check" data-recipe-id="${r.id}" style="width:20px;height:20px;cursor:pointer;accent-color:var(--cook-accent);" />
+      </label>` : ''}
       <div class="recipe-card-top">
         <div class="recipe-emoji">${escHtml(r.emoji||'🍽️')}</div>
         <div class="recipe-info">
@@ -4909,6 +5256,8 @@ function renderCookTab(){
             <span class="recipe-chip">📋 ${(r.steps||[]).length} steps</span>
           </div>
         </div>
+        ${!shareMode ? `<button onclick="event.stopPropagation();shareRecipe('${r.id}')" title="Share"
+          style="padding:8px;background:none;border:none;font-size:1.2rem;cursor:pointer;flex-shrink:0;opacity:0.6;">↗️</button>` : ''}
       </div>
     </div>`).join('');
 }
@@ -4941,7 +5290,8 @@ function openRecipeDetail(id){
     </div>
     <div style="display:flex;gap:8px;margin-bottom:16px;">
       <button class="btn btn-secondary" style="flex:1;" onclick="renderCookTab()">← Back</button>
-      <button class="btn btn-primary" style="flex:1;background:var(--cook-accent);" onclick="openRecipeEdit('${r.id}')">✏️ Edit Recipe</button>
+      <button class="btn btn-secondary" style="padding:12px 14px;" onclick="shareRecipe('${r.id}')" title="Share recipe">↗️ Share</button>
+      <button class="btn btn-primary" style="flex:1;background:var(--cook-accent);" onclick="openRecipeEdit('${r.id}')">✏️ Edit</button>
     </div>
     ${(r.ingredients||[]).length?`<div class="recipe-section-title">Ingredients</div>${ings}`:''}
     ${(r.steps||[]).length?`<div class="recipe-section-title">Steps</div>${steps}`:''}
@@ -6702,6 +7052,7 @@ function bindEvents(){
     'emoji-picker-overlay',
     'scan-recipe-overlay',
     'cook-add-sheet-overlay',
+    'url-import-overlay',
     'pantry-add-sheet-overlay',
     'shop-add-sheet-overlay',
     'smart-scan-overlay',
@@ -6744,6 +7095,12 @@ function bindEvents(){
   window.cancelEditStep          = cancelEditStep;
   window.moveStep                = moveStep;
   window.renderCookTab           = renderCookTab;
+  window.openUrlImport           = openUrlImport;
+  window.onUrlImportInput        = onUrlImportInput;
+  window.runUrlImport            = runUrlImport;
+  window.shareRecipe             = shareRecipe;
+  window.shareSelectedRecipes    = shareSelectedRecipes;
+  window.toggleRecipeShareMode   = toggleRecipeShareMode;
   window.toggleSkipItem          = toggleSkipItem;
   window.clearSkipped            = clearSkipped;
   window.openAddStoredFood       = openAddStoredFood;
