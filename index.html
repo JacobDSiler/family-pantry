@@ -3021,7 +3021,9 @@ function empty(icon,title,sub){
   return `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
 }
 function timeAgo(ts){
+  if(!ts || isNaN(ts)) return 'recently';
   const d=Date.now()-ts;
+  if(d<0) return 'just now';
   if(d<60000)return'just now';
   if(d<3600000)return Math.floor(d/60000)+'m ago';
   if(d<86400000)return Math.floor(d/3600000)+'h ago';
@@ -3433,6 +3435,7 @@ async function saveScanResult(){
           category: defaultCat,
           status: 'out',
           estimatedPrice: null,
+          updated: Date.now(),
         };
         await saveRecord('items', newItem);
       }
