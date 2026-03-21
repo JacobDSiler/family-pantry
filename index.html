@@ -3946,12 +3946,43 @@ function itemCard(item, showPrice){
 
 function categoryHeader(cat, count){
   const isCollapsed = STATE.collapsedCats.has(cat);
+  const isShopping = STATE.mode === 'shopping';
+
+  // In shopping mode, check if all needs in this category are skipped
+  const catNeeds = (STATE.items||[]).filter(i => i.category===cat && i.status!=='full');
+  const allSkipped = catNeeds.length > 0 && catNeeds.every(i => STATE.skippedIds.has(i.id));
+
+  const skipBtn = isShopping && catNeeds.length ? `
+    <button onclick="event.stopPropagation();skipCategory('${escHtml(cat)}')"
+      title="${allSkipped?'Unskip':'Skip'} all items in ${escHtml(cat)}"
+      style="font-size:0.72rem;padding:3px 9px;border-radius:50px;border:1.5px solid ${allSkipped?'var(--shop-accent)':'var(--border)'};
+             background:${allSkipped?'var(--shop-accent)':'transparent'};color:${allSkipped?'#fff':'var(--text2)'};
+             cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:inherit;font-weight:600;transition:all 0.15s;">
+      ${allSkipped ? '↩ Unskip' : 'Skip →'}
+    </button>` : '';
+
   return `<div class="category-header" onclick="toggleCatCollapse('${escHtml(cat)}')">
     <div class="category-name">${catEmoji(cat)} ${escHtml(cat)}<span class="category-count">${count}</span></div>
+    ${skipBtn}
     <span class="cat-collapse-chevron">▼</span>
     <div class="cat-add-btn" onclick="event.stopPropagation();openAddModalForCategory('${escHtml(cat)}')" title="Add item to ${escHtml(cat)}">＋</div>
   </div>`;
 }
+
+function skipCategory(cat){
+  const catNeeds = STATE.items.filter(i => i.category===cat && i.status!=='full');
+  const allSkipped = catNeeds.every(i => STATE.skippedIds.has(i.id));
+  if(allSkipped){
+    // Unskip all
+    catNeeds.forEach(i => STATE.skippedIds.delete(i.id));
+  } else {
+    // Skip all needs in this category
+    catNeeds.forEach(i => STATE.skippedIds.add(i.id));
+  }
+  renderShoppingTab();
+  renderFilterBar();
+}
+window.skipCategory = skipCategory;
 
 function toggleCatCollapse(cat){
   if(STATE.collapsedCats.has(cat)) STATE.collapsedCats.delete(cat);
@@ -7199,6 +7230,7 @@ function bindEvents(){
   window.doShareVia              = doShareVia;
   window.openShareModal          = openShareModal;
   window.toggleSkipItem          = toggleSkipItem;
+  window.skipCategory            = skipCategory;
   window.clearSkipped            = clearSkipped;
   window.openAddStoredFood       = openAddStoredFood;
   window.saveStoredFood          = saveStoredFood;
