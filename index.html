@@ -5160,12 +5160,13 @@ function deriveStatusFromQty(qty, maxQty){
   if(maxQty !== null && maxQty !== ''){
     const m = parseFloat(maxQty);
     if(!isNaN(m) && m > 0){
-      if(q >= m) return 'full';
-      if(q >= m * 0.5) return 'low';
-      return 'out';
+      const ratio = q / m;
+      if(ratio >= 0.8) return 'full';   // 80%+ → Full
+      if(ratio >= 0.3) return 'low';    // 30–79% → Low
+      return 'out';                      // <30% → Out
     }
   }
-  // No maxQty — just qty: treat 1 as low, 2+ as full, 0 as out
+  // No maxQty — just qty: 0=out, 1=low, 2+=full
   return q === 1 ? 'low' : 'full';
 }
 
@@ -5187,8 +5188,9 @@ function onQtyInput(){
     // Show threshold hint
     if(maxQty){
       const q=parseFloat(qty), m=parseFloat(maxQty);
-      const low50 = Math.ceil(m*0.5);
-      hintEl.textContent = `Out: 0  ·  Low: ${low50}–${m-1}  ·  Full: ${m}+`;
+      const lowMin  = Math.ceil(m * 0.3);
+      const fullMin = Math.ceil(m * 0.8);
+      hintEl.textContent = `Out: 0–${lowMin-1}  ·  Low: ${lowMin}–${fullMin-1}  ·  Full: ${fullMin}+`;
       hintEl.style.display='block';
     } else {
       hintEl.style.display='none';
