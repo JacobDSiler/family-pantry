@@ -1407,6 +1407,37 @@ window.addEventListener('unhandledrejection', function(e){
   </div>
 </div>
 
+<!-- RECIPE CATEGORY MANAGE SHEET -->
+<div class="overlay" id="recipe-cat-menu-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="recipe-cat-menu-title">Recipe Ingredients</div>
+    <div class="modal-sub" id="recipe-cat-menu-sub" style="margin-bottom:16px;"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+
+      <button onclick="recipeCatMoveToGeneral()"
+        style="display:flex;align-items:center;gap:14px;padding:15px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.6rem;">📦</span>
+        <div>
+          <div style="font-weight:700;font-size:0.92rem;">Move to General Pantry</div>
+          <div style="font-size:0.77rem;color:var(--text2);margin-top:2px;">Keep items but move them to the "Other" category</div>
+        </div>
+      </button>
+
+      <button onclick="recipeCatDelete()"
+        style="display:flex;align-items:center;gap:14px;padding:15px;background:#fff5f5;border:1.5px solid var(--out);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.6rem;">🗑️</span>
+        <div>
+          <div style="font-weight:700;font-size:0.92rem;color:var(--out);">Remove from Pantry</div>
+          <div style="font-size:0.77rem;color:var(--text2);margin-top:2px;">Delete all ingredients in this recipe group</div>
+        </div>
+      </button>
+
+    </div>
+    <button class="btn btn-secondary" style="width:100%;" onclick="closeModal('recipe-cat-menu-overlay')">Cancel</button>
+  </div>
+</div>
+
 <!-- ADD MISSING INGREDIENTS CONFIRM MODAL -->
 <div class="overlay" id="add-missing-overlay">
   <div class="modal">
@@ -3096,12 +3127,22 @@ function renderRecipeGroup(itemList, cardFn, isShopping){
         ${catAllSkipped?'↩ Unskip':'Skip →'}
       </button>` : '';
 
+    // Manage button — pantry mode only
+    const manageBtn = !isShopping ? `
+      <button onclick="event.stopPropagation();openRecipeCatMenu('${escHtml(cat)}')"
+        title="Manage ${escHtml(subName)} ingredients"
+        style="padding:3px 8px;border-radius:50px;border:1.5px solid var(--border);background:transparent;
+               color:var(--text2);cursor:pointer;font-size:0.75rem;flex-shrink:0;font-weight:700;line-height:1.4;">
+        ⋯
+      </button>` : '';
+
     return `<div class="recipe-sub-section${subCollapsed?' collapsed':''}" data-subcat="${escHtml(cat)}">
       <div class="recipe-sub-header" onclick="toggleRecipeSubCollapse('${escHtml(cat)}')">
         <span class="recipe-sub-chevron">▼</span>
         <span class="recipe-sub-title">🍽️ ${escHtml(subName)}</span>
         <span class="recipe-sub-count">${items.length}</span>
         ${skipBtn}
+        ${manageBtn}
       </div>
       <div class="recipe-sub-wrapper" style="${subCollapsed?'max-height:0;opacity:0;':''}">
         ${items.map(i=>cardFn(i)).join('')}
@@ -3242,6 +3283,49 @@ async function confirmAddMissing(){
   _addMissingRecipeId = null;
 }
 window.confirmAddMissing = confirmAddMissing;
+
+// ── RECIPE CATEGORY MANAGEMENT ───────────────────────────────────────────────
+let _recipeCatMenuCat = null;
+
+function openRecipeCatMenu(cat){
+  _recipeCatMenuCat = cat;
+  const name = recipeCatName(cat);
+  const count = STATE.items.filter(i=>i.category===cat).length;
+  document.getElementById('recipe-cat-menu-title').textContent = `🍽️ ${name}`;
+  document.getElementById('recipe-cat-menu-sub').textContent =
+    `${count} ingredient${count!==1?'s':''} in this recipe group`;
+  openModal('recipe-cat-menu-overlay');
+}
+window.openRecipeCatMenu = openRecipeCatMenu;
+
+async function recipeCatMoveToGeneral(){
+  const cat = _recipeCatMenuCat;
+  if(!cat){ closeModal('recipe-cat-menu-overlay'); return; }
+  const items = STATE.items.filter(i=>i.category===cat);
+  for(const item of items){
+    await saveRecord('items', { ...item, category: 'Other', updated: Date.now() });
+  }
+  closeModal('recipe-cat-menu-overlay');
+  showToast(`📦 ${items.length} item${items.length!==1?'s':''} moved to general pantry`);
+  _recipeCatMenuCat = null;
+}
+window.recipeCatMoveToGeneral = recipeCatMoveToGeneral;
+
+async function recipeCatDelete(){
+  const cat = _recipeCatMenuCat;
+  if(!cat){ closeModal('recipe-cat-menu-overlay'); return; }
+  const items = STATE.items.filter(i=>i.category===cat);
+  const name = recipeCatName(cat);
+  closeModal('recipe-cat-menu-overlay');
+  // Small confirm to prevent accidental taps
+  if(!confirm(`Remove all ${items.length} ingredient${items.length!==1?'s':''} from "${name}"?\n\nThis deletes them from your pantry. You can always add them back from the Cook tab.`)) return;
+  for(const item of items){
+    await deleteRecord('items', item.id);
+  }
+  showToast(`🗑️ "${name}" removed from pantry`);
+  _recipeCatMenuCat = null;
+}
+window.recipeCatDelete = recipeCatDelete;
 function empty(icon,title,sub){
   return `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
 }
@@ -7450,6 +7534,7 @@ function bindEvents(){
     'url-import-overlay',
     'recipe-share-overlay',
     'add-missing-overlay',
+    'recipe-cat-menu-overlay',
     'pantry-add-sheet-overlay',
     'shop-add-sheet-overlay',
     'smart-scan-overlay',
@@ -7481,6 +7566,9 @@ function bindEvents(){
   window.openRecipeDetail          = openRecipeDetail;
   window.openAddMissingConfirm     = openAddMissingConfirm;
   window.confirmAddMissing         = confirmAddMissing;
+  window.openRecipeCatMenu         = openRecipeCatMenu;
+  window.recipeCatMoveToGeneral    = recipeCatMoveToGeneral;
+  window.recipeCatDelete           = recipeCatDelete;
   window.openRecipeEdit          = openRecipeEdit;
   window.recalcMlogTotal         = recalcMlogTotal;
   window.showRscanStep           = showRscanStep;
