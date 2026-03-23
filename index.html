@@ -293,6 +293,24 @@ body.mode-shopping .cat-add-btn:hover{background:var(--shop-accent);border-color
 @media(hover:none){.cat-add-btn{opacity:1;}}
 .cat-items-wrapper{overflow:hidden;transition:max-height 0.25s ease, opacity 0.2s ease;}
 .category-section.collapsed .cat-items-wrapper{max-height:0!important;opacity:0;pointer-events:none;}
+/* Recipe group — parent collapsible container */
+.recipe-group-section{margin-bottom:26px;}
+.recipe-group-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--cook-light);border:1.5px solid var(--cook-accent);border-radius:14px;margin-bottom:8px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;}
+.recipe-group-title{font-family:'Fraunces',serif;font-size:1rem;font-weight:600;color:var(--cook-accent);flex:1;}
+.recipe-group-count{font-size:0.72rem;background:rgba(181,69,27,0.12);border-radius:50px;padding:2px 8px;color:var(--cook-accent);}
+.recipe-group-chevron{font-size:0.75rem;color:var(--cook-accent);transition:transform 0.2s;}
+.recipe-group-section.collapsed .recipe-group-chevron{transform:rotate(-90deg);}
+.recipe-group-wrapper{overflow:hidden;transition:max-height 0.35s ease,opacity 0.2s ease;}
+.recipe-group-section.collapsed .recipe-group-wrapper{max-height:0!important;opacity:0;pointer-events:none;}
+/* Recipe sub-category */
+.recipe-sub-section{margin-bottom:10px;border-left:3px solid var(--cook-accent);padding-left:12px;}
+.recipe-sub-header{display:flex;align-items:center;gap:8px;padding:5px 0 5px 0;cursor:pointer;user-select:none;}
+.recipe-sub-title{font-size:0.85rem;font-weight:700;color:var(--cook-accent);flex:1;}
+.recipe-sub-count{font-size:0.7rem;background:var(--cook-light);border-radius:50px;padding:2px 7px;color:var(--cook-accent);}
+.recipe-sub-chevron{font-size:0.68rem;color:var(--cook-accent);transition:transform 0.2s;opacity:0.7;}
+.recipe-sub-section.collapsed .recipe-sub-chevron{transform:rotate(-90deg);}
+.recipe-sub-wrapper{overflow:hidden;transition:max-height 0.25s ease,opacity 0.2s ease;}
+.recipe-sub-section.collapsed .recipe-sub-wrapper{max-height:0!important;opacity:0;pointer-events:none;}
 
 /* ── ITEM CARD ── */
 .item-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:opacity 0.2s,transform 0.15s;position:relative;}
@@ -1386,6 +1404,25 @@ window.addEventListener('unhandledrejection', function(e){
     </button>
 
     <button class="btn btn-secondary" style="width:100%;" onclick="closeModal('recipe-share-overlay')">Cancel</button>
+  </div>
+</div>
+
+<!-- ADD MISSING INGREDIENTS CONFIRM MODAL -->
+<div class="overlay" id="add-missing-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🛒 Add Missing Ingredients</div>
+    <div class="modal-sub" id="add-missing-sub" style="margin-bottom:14px;"></div>
+    <div id="add-missing-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:50vh;overflow-y:auto;"></div>
+    <div style="background:var(--cook-light);border-radius:10px;padding:10px 12px;font-size:0.78rem;color:var(--cook-accent);margin-bottom:14px;">
+      🍽️ Items will be added under <strong>Recipe: [Recipe Name]</strong> so you can find and skip them easily in the shopping tab.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('add-missing-overlay')">Cancel</button>
+      <button class="btn btn-primary" style="background:var(--cook-accent);" onclick="confirmAddMissing()">
+        ✓ Add to Pantry
+      </button>
+    </div>
   </div>
 </div>
 
@@ -3009,14 +3046,202 @@ function sorted(list, byRecent, byAlpha){
 function getCatsWithItems(itemList){
   itemList=itemList||STATE.items;
   const used=STATE.categories.filter(cat=>itemList.some(i=>i.category===cat));
-  const hasOther=itemList.some(i=>!STATE.categories.includes(i.category));
+  const hasOther=itemList.some(i=>!STATE.categories.includes(i.category)&&!isRecipeCat(i.category));
   return hasOther?[...used,'Other']:used;
 }
 function getCatItems(cat, itemList){
   itemList=itemList||STATE.items;
-  return cat==='Other'?itemList.filter(i=>!STATE.categories.includes(i.category)):itemList.filter(i=>i.category===cat);
+  if(cat==='Other') return itemList.filter(i=>!STATE.categories.includes(i.category)&&!isRecipeCat(i.category));
+  return itemList.filter(i=>i.category===cat);
 }
 function catEmoji(cat){ return CAT_EMOJI_MAP[cat]||'📦'; }
+
+// Recipe category helpers
+function isRecipeCat(cat){ return typeof cat==='string' && cat.startsWith('Recipe: '); }
+function recipeCatName(cat){ return cat.replace(/^Recipe:\s*/,''); }
+function getRecipeCats(itemList){
+  itemList=itemList||STATE.items;
+  const cats = new Set(itemList.filter(i=>isRecipeCat(i.category)).map(i=>i.category));
+  return [...cats].sort();
+}
+
+function renderRecipeGroup(itemList, cardFn, isShopping){
+  const recipeCats = getRecipeCats(itemList);
+  if(!recipeCats.length) return '';
+
+  const allItems = recipeCats.flatMap(cat => itemList.filter(i=>i.category===cat));
+  const needCount = allItems.filter(i=>i.status!=='full').length;
+  if(isShopping && !needCount) return ''; // nothing needed from recipes — hide group in shopping
+
+  const groupKey = '__recipe_group__';
+  const groupCollapsed = STATE.collapsedCats.has(groupKey);
+
+  const subSections = recipeCats.map(cat => {
+    let items = itemList.filter(i=>i.category===cat);
+    if(isShopping) items = items.filter(i=>i.status!=='full'&&!STATE.skippedIds.has(i.id));
+    if(!items.length) return '';
+
+    const subKey = '__rsub__'+cat;
+    const subCollapsed = STATE.collapsedCats.has(subKey);
+    const subName = recipeCatName(cat);
+
+    // Skip button for shopping mode
+    const catAllNeeds = itemList.filter(i=>i.category===cat&&i.status!=='full');
+    const catAllSkipped = catAllNeeds.length && catAllNeeds.every(i=>STATE.skippedIds.has(i.id));
+    const skipBtn = isShopping && catAllNeeds.length ? `
+      <button onclick="event.stopPropagation();skipCategory('${escHtml(cat)}')"
+        style="font-size:0.7rem;padding:2px 8px;border-radius:50px;border:1.5px solid ${catAllSkipped?'var(--cook-accent)':'var(--border)'};
+               background:${catAllSkipped?'var(--cook-accent)':'transparent'};color:${catAllSkipped?'#fff':'var(--text2)'};
+               cursor:pointer;white-space:nowrap;font-family:inherit;font-weight:600;flex-shrink:0;">
+        ${catAllSkipped?'↩ Unskip':'Skip →'}
+      </button>` : '';
+
+    return `<div class="recipe-sub-section${subCollapsed?' collapsed':''}" data-subcat="${escHtml(cat)}">
+      <div class="recipe-sub-header" onclick="toggleRecipeSubCollapse('${escHtml(cat)}')">
+        <span class="recipe-sub-chevron">▼</span>
+        <span class="recipe-sub-title">🍽️ ${escHtml(subName)}</span>
+        <span class="recipe-sub-count">${items.length}</span>
+        ${skipBtn}
+      </div>
+      <div class="recipe-sub-wrapper" style="${subCollapsed?'max-height:0;opacity:0;':''}">
+        ${items.map(i=>cardFn(i)).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  if(!subSections.trim()) return '';
+
+  const totalVisible = recipeCats.reduce((n,cat)=>{
+    let items = itemList.filter(i=>i.category===cat);
+    if(isShopping) items=items.filter(i=>i.status!=='full'&&!STATE.skippedIds.has(i.id));
+    return n+items.length;
+  },0);
+
+  return `<div class="recipe-group-section${groupCollapsed?' collapsed':''}" id="recipe-group-section">
+    <div class="recipe-group-header" onclick="toggleRecipeGroupCollapse()">
+      <span class="recipe-group-chevron">▼</span>
+      <span class="recipe-group-title">🍽️ Recipe Ingredients</span>
+      <span class="recipe-group-count">${totalVisible} item${totalVisible!==1?'s':''}</span>
+    </div>
+    <div class="recipe-group-wrapper" style="${groupCollapsed?'max-height:0;opacity:0;':''}">
+      ${subSections}
+    </div>
+  </div>`;
+}
+
+function toggleRecipeGroupCollapse(){
+  const key='__recipe_group__';
+  if(STATE.collapsedCats.has(key)) STATE.collapsedCats.delete(key);
+  else STATE.collapsedCats.add(key);
+  const el=document.getElementById('recipe-group-section');
+  if(el){
+    const collapsed=STATE.collapsedCats.has(key);
+    el.classList.toggle('collapsed',collapsed);
+    const wrapper=el.querySelector('.recipe-group-wrapper');
+    if(wrapper) wrapper.style.maxHeight = collapsed ? '0' : '9999px';
+  }
+}
+window.toggleRecipeGroupCollapse = toggleRecipeGroupCollapse;
+
+function toggleRecipeSubCollapse(cat){
+  const key='__rsub__'+cat;
+  if(STATE.collapsedCats.has(key)) STATE.collapsedCats.delete(key);
+  else STATE.collapsedCats.add(key);
+  const el=document.querySelector(`.recipe-sub-section[data-subcat="${CSS.escape(cat)}"]`);
+  if(el){
+    const collapsed=STATE.collapsedCats.has(key);
+    el.classList.toggle('collapsed',collapsed);
+    const wrapper=el.querySelector('.recipe-sub-wrapper');
+    if(wrapper) wrapper.style.maxHeight = collapsed ? '0' : '9999px';
+  }
+}
+window.toggleRecipeSubCollapse = toggleRecipeSubCollapse;
+
+// ── ADD MISSING INGREDIENTS FROM RECIPE DETAIL ──────────────────────────────
+let _addMissingRecipeId = null;
+
+function openAddMissingConfirm(recipeId){
+  const r = STATE.recipes.find(r=>r.id===recipeId);
+  if(!r) return;
+  _addMissingRecipeId = recipeId;
+
+  const pantryNames = new Set(STATE.items.map(i=>i.name.toLowerCase().trim()));
+  const recipeCat = `Recipe: ${r.name}`;
+  const alreadyInCat = new Set(
+    STATE.items.filter(i=>i.category===recipeCat).map(i=>i.name.toLowerCase().trim())
+  );
+  const missing = (r.ingredients||[]).filter(i=>
+    !pantryNames.has(i.name.toLowerCase().trim()) &&
+    !alreadyInCat.has(i.name.toLowerCase().trim())
+  );
+
+  if(!missing.length){
+    showToast('All ingredients are already in your pantry!');
+    return;
+  }
+
+  document.getElementById('add-missing-sub').textContent =
+    `${missing.length} ingredient${missing.length!==1?'s':''} from "${r.name}" will be added as Out.`;
+
+  document.getElementById('add-missing-list').innerHTML = missing.map((ing, idx) =>
+    `<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface2);border-radius:10px;cursor:pointer;">
+      <input type="checkbox" data-missing-idx="${idx}" checked style="width:17px;height:17px;accent-color:var(--cook-accent);cursor:pointer;flex-shrink:0;" />
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:0.88rem;">${escHtml(ing.name)}</div>
+        ${ing.qty?`<div style="font-size:0.75rem;color:var(--text2);">${escHtml(ing.qty)}</div>`:''}
+      </div>
+      <span style="font-size:0.68rem;padding:2px 7px;border-radius:20px;background:#fef6e4;color:var(--low);font-weight:600;">Out</span>
+    </label>`
+  ).join('');
+
+  openModal('add-missing-overlay');
+}
+window.openAddMissingConfirm = openAddMissingConfirm;
+
+async function confirmAddMissing(){
+  const r = STATE.recipes.find(r=>r.id===_addMissingRecipeId);
+  if(!r){ closeModal('add-missing-overlay'); return; }
+
+  const pantryNames = new Set(STATE.items.map(i=>i.name.toLowerCase().trim()));
+  const recipeCat = `Recipe: ${r.name}`;
+  const alreadyInCat = new Set(
+    STATE.items.filter(i=>i.category===recipeCat).map(i=>i.name.toLowerCase().trim())
+  );
+  const missing = (r.ingredients||[]).filter(i=>
+    !pantryNames.has(i.name.toLowerCase().trim()) &&
+    !alreadyInCat.has(i.name.toLowerCase().trim())
+  );
+
+  // Only save checked items
+  const checked = new Set(
+    Array.from(document.querySelectorAll('[data-missing-idx]:checked'))
+      .map(el=>parseInt(el.dataset.missingIdx))
+  );
+
+  let added = 0;
+  for(let idx=0; idx<missing.length; idx++){
+    if(!checked.has(idx)) continue;
+    const ing = missing[idx];
+    await saveRecord('items', {
+      id: uid(),
+      name: ing.name,
+      category: recipeCat,
+      status: 'out',
+      estimatedPrice: null,
+      qty: null,
+      maxQty: null,
+      updated: Date.now(),
+    });
+    added++;
+  }
+
+  closeModal('add-missing-overlay');
+  // Refresh the recipe detail to update the badges and button
+  openRecipeDetail(_addMissingRecipeId);
+  showToast(`✅ ${added} ingredient${added!==1?'s':''} added to "Recipe: ${r.name}"`);
+  _addMissingRecipeId = null;
+}
+window.confirmAddMissing = confirmAddMissing;
 function empty(icon,title,sub){
   return `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
 }
@@ -3422,17 +3647,17 @@ async function saveScanResult(){
     updated: Date.now(),
   };
 
-  // Add missing pantry items as Out if checkbox is ticked
+  // Add missing pantry items as Out under their recipe category
   const addMissing = document.getElementById('scan-add-missing').checked;
   if(addMissing && _scanResult?.ingredients){
     const pantryNames = new Set(STATE.items.map(i => i.name.toLowerCase().trim()));
-    const defaultCat = STATE.categories[0]||'Other';
+    const recipeCat = 'Recipe: ' + name; // use recipe name as category
     for(const ing of _scanResult.ingredients){
       if(!pantryNames.has(ing.name.toLowerCase().trim())){
         const newItem = {
           id: uid(),
           name: ing.name,
-          category: defaultCat,
+          category: recipeCat,
           status: 'out',
           estimatedPrice: null,
           updated: Date.now(),
@@ -4033,6 +4258,12 @@ function renderPantry(){
       </div>
     </div>`;
   }
+  // Recipe ingredient groups at the bottom
+  html += renderRecipeGroup(
+    STATE.pf.needs ? STATE.items.filter(i=>i.status!=='full') : STATE.items,
+    i => itemCard(i, false),
+    false
+  );
   if(!html) html=empty('✅','All stocked up!','Nothing is out or low right now. Great job!');
   container.innerHTML=html;
 }
@@ -4108,6 +4339,8 @@ function renderShoppingTab(){
       </div>
     </div>`;
   }
+  // Recipe ingredient groups at the bottom of shopping list
+  html += renderRecipeGroup(STATE.items, i => shoppingItemCard(i), true);
   if(!html) html=STATE.sf.needsOnly?empty('🎉','Nothing needed!','Everything is stocked!'):empty('🛒','Nothing tracked yet!','Tap "+ Add" to start.');
   container.innerHTML=html;
 }
@@ -5394,16 +5627,48 @@ function openRecipeDetail(id){
   const r=STATE.recipes.find(r=>r.id===id);
   if(!r) return;
   const container=document.getElementById('items-container');
-  const ings=(r.ingredients||[]).map(i=>`
-    <div class="ingredient-row">
-      <span class="ingredient-qty">${escHtml(i.qty||'')}</span>
-      <span class="ingredient-name">${escHtml(i.name)}</span>
-    </div>`).join('');
+
+  // Check which ingredients are already in pantry
+  const pantryNames = new Set(STATE.items.map(i=>i.name.toLowerCase().trim()));
+  const missing = (r.ingredients||[]).filter(i=>!pantryNames.has(i.name.toLowerCase().trim()));
+  const alreadyInRecipeCat = new Set(
+    STATE.items.filter(i=>i.category===`Recipe: ${r.name}`).map(i=>i.name.toLowerCase().trim())
+  );
+  // Truly missing = not in pantry at all (not even already added as recipe item)
+  const trulyMissing = missing.filter(i=>!alreadyInRecipeCat.has(i.name.toLowerCase().trim()));
+
+  const ings=(r.ingredients||[]).map(i=>{
+    const inPantry = pantryNames.has(i.name.toLowerCase().trim());
+    const badge = inPantry
+      ? `<span style="font-size:0.68rem;padding:2px 7px;border-radius:20px;background:#dcfce7;color:#166534;font-weight:600;flex-shrink:0;">✓ In pantry</span>`
+      : `<span style="font-size:0.68rem;padding:2px 7px;border-radius:20px;background:#fef6e4;color:var(--low);font-weight:600;flex-shrink:0;">+ Missing</span>`;
+    return `<div class="ingredient-row" style="justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+        <span class="ingredient-qty">${escHtml(i.qty||'')}</span>
+        <span class="ingredient-name">${escHtml(i.name)}</span>
+      </div>
+      ${badge}
+    </div>`;
+  }).join('');
+
   const steps=(r.steps||[]).map((s,idx)=>`
     <div class="step-row">
       <span class="step-num">${idx+1}</span>
       <span class="step-text">${escHtml(s)}</span>
     </div>`).join('');
+
+  const missingBtn = trulyMissing.length ? `
+    <button onclick="openAddMissingConfirm('${r.id}')"
+      style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;
+             background:#fef6e4;border:1.5px solid var(--low);border-radius:14px;cursor:pointer;
+             font-size:0.88rem;font-weight:600;color:var(--low);margin-bottom:16px;">
+      🛒 Add ${trulyMissing.length} missing ingredient${trulyMissing.length!==1?'s':''} to pantry
+    </button>` : (missing.length === 0 ? `
+    <div style="width:100%;text-align:center;padding:10px;background:#dcfce7;border-radius:12px;
+                font-size:0.82rem;color:#166534;font-weight:600;margin-bottom:16px;">
+      ✅ All ingredients are in your pantry!
+    </div>` : '');
+
   container.innerHTML=`
     <div class="recipe-detail-header">
       <div class="recipe-detail-emoji">${escHtml(r.emoji||'🍽️')}</div>
@@ -5413,6 +5678,7 @@ function openRecipeDetail(id){
         ${r.cookTime?`<span class="recipe-detail-chip">⏱ ${escHtml(r.cookTime)}</span>`:''}
         <span class="recipe-detail-chip">🧺 ${(r.ingredients||[]).length} ingredients</span>
         <span class="recipe-detail-chip">📋 ${(r.steps||[]).length} steps</span>
+        ${missing.length?`<span class="recipe-detail-chip" style="background:rgba(255,200,0,0.25);">⚠️ ${missing.length} missing</span>`:'<span class="recipe-detail-chip" style="background:rgba(100,200,100,0.25);">✅ All stocked</span>'}
       </div>
       ${(r.steps||[]).length?`<button class="start-cooking-btn" onclick="startFocusMode('${r.id}')">🔥 Start Cooking</button>`:''}
     </div>
@@ -5421,6 +5687,7 @@ function openRecipeDetail(id){
       <button class="btn btn-secondary" style="padding:12px 14px;" onclick="shareRecipe('${r.id}')" title="Share recipe">↗️ Share</button>
       <button class="btn btn-primary" style="flex:1;background:var(--cook-accent);" onclick="openRecipeEdit('${r.id}')">✏️ Edit</button>
     </div>
+    ${missingBtn}
     ${(r.ingredients||[]).length?`<div class="recipe-section-title">Ingredients</div>${ings}`:''}
     ${(r.steps||[]).length?`<div class="recipe-section-title">Steps</div>${steps}`:''}
   `;
@@ -7182,6 +7449,7 @@ function bindEvents(){
     'cook-add-sheet-overlay',
     'url-import-overlay',
     'recipe-share-overlay',
+    'add-missing-overlay',
     'pantry-add-sheet-overlay',
     'shop-add-sheet-overlay',
     'smart-scan-overlay',
@@ -7210,7 +7478,9 @@ function bindEvents(){
   window.openAddModal            = openAddModal;
   window.openAddStore            = openAddStore;
   window.openAddModalForCategory = openAddModalForCategory;
-  window.openRecipeDetail        = openRecipeDetail;
+  window.openRecipeDetail          = openRecipeDetail;
+  window.openAddMissingConfirm     = openAddMissingConfirm;
+  window.confirmAddMissing         = confirmAddMissing;
   window.openRecipeEdit          = openRecipeEdit;
   window.recalcMlogTotal         = recalcMlogTotal;
   window.showRscanStep           = showRscanStep;
@@ -7242,7 +7512,9 @@ function bindEvents(){
   window.updateStoredAmount      = updateStoredAmount;
   window.clearExpiredStored      = clearExpiredStored;
   window.updateStoredExpiryPreview = updateStoredExpiryPreview;
-  window.toggleCatCollapse       = toggleCatCollapse;
+  window.toggleCatCollapse         = toggleCatCollapse;
+  window.toggleRecipeGroupCollapse = toggleRecipeGroupCollapse;
+  window.toggleRecipeSubCollapse   = toggleRecipeSubCollapse;
   window.applyCurrency           = applyCurrency;
   window.openEmojiPicker         = openEmojiPicker;
   window.filterEmojiGrid         = filterEmojiGrid;
