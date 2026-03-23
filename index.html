@@ -1407,6 +1407,46 @@ window.addEventListener('unhandledrejection', function(e){
   </div>
 </div>
 
+<!-- CATEGORY MANAGE SHEET -->
+<div class="overlay" id="cat-menu-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="cat-menu-title">Category</div>
+    <div class="modal-sub" id="cat-menu-sub" style="margin-bottom:16px;"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+
+      <button onclick="catMenuDeleteAll()"
+        style="display:flex;align-items:center;gap:14px;padding:15px;background:#fff5f5;border:1.5px solid var(--out);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.6rem;">🗑️</span>
+        <div>
+          <div style="font-weight:700;font-size:0.92rem;color:var(--out);">Remove All Items</div>
+          <div style="font-size:0.77rem;color:var(--text2);margin-top:2px;">Delete every item in this category from your pantry</div>
+        </div>
+      </button>
+
+      <button onclick="catMenuMarkAllOut()"
+        style="display:flex;align-items:center;gap:14px;padding:15px;background:#fff8f5;border:1.5px solid var(--out);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.6rem;">🚫</span>
+        <div>
+          <div style="font-weight:700;font-size:0.92rem;color:var(--out);">Mark All as Out</div>
+          <div style="font-size:0.77rem;color:var(--text2);margin-top:2px;">Set every item in this category to Out</div>
+        </div>
+      </button>
+
+      <button onclick="catMenuMarkAllFull()"
+        style="display:flex;align-items:center;gap:14px;padding:15px;background:#f0fdf4;border:1.5px solid var(--full);border-radius:14px;cursor:pointer;text-align:left;width:100%;">
+        <span style="font-size:1.6rem;">✅</span>
+        <div>
+          <div style="font-weight:700;font-size:0.92rem;color:var(--full);">Mark All as Full</div>
+          <div style="font-size:0.77rem;color:var(--text2);margin-top:2px;">Set every item in this category to Stocked</div>
+        </div>
+      </button>
+
+    </div>
+    <button class="btn btn-secondary" style="width:100%;" onclick="closeModal('cat-menu-overlay')">Cancel</button>
+  </div>
+</div>
+
 <!-- RECIPE CATEGORY MANAGE SHEET -->
 <div class="overlay" id="recipe-cat-menu-overlay">
   <div class="modal">
@@ -4259,6 +4299,7 @@ function itemCard(item, showPrice){
 function categoryHeader(cat, count){
   const isCollapsed = STATE.collapsedCats.has(cat);
   const isShopping = STATE.mode === 'shopping';
+  const isPantry   = STATE.mode === 'pantry';
 
   // In shopping mode, check if all needs in this category are skipped
   const catNeeds = (STATE.items||[]).filter(i => i.category===cat && i.status!=='full');
@@ -4273,9 +4314,18 @@ function categoryHeader(cat, count){
       ${allSkipped ? '↩ Unskip' : 'Skip →'}
     </button>` : '';
 
+  const manageBtn = isPantry ? `
+    <button onclick="event.stopPropagation();openCatMenu('${escHtml(cat)}')"
+      title="Manage ${escHtml(cat)}"
+      style="padding:3px 8px;border-radius:50px;border:1.5px solid var(--border);background:transparent;
+             color:var(--text2);cursor:pointer;font-size:0.75rem;flex-shrink:0;font-weight:700;line-height:1.4;">
+      ⋯
+    </button>` : '';
+
   return `<div class="category-header" onclick="toggleCatCollapse('${escHtml(cat)}')">
     <div class="category-name">${catEmoji(cat)} ${escHtml(cat)}<span class="category-count">${count}</span></div>
     ${skipBtn}
+    ${manageBtn}
     <span class="cat-collapse-chevron">▼</span>
     <div class="cat-add-btn" onclick="event.stopPropagation();openAddModalForCategory('${escHtml(cat)}')" title="Add item to ${escHtml(cat)}">＋</div>
   </div>`;
@@ -4295,6 +4345,63 @@ function skipCategory(cat){
   renderFilterBar();
 }
 window.skipCategory = skipCategory;
+
+// ── CATEGORY MANAGEMENT ───────────────────────────────────────────────────────
+let _catMenuCat = null;
+
+function openCatMenu(cat){
+  _catMenuCat = cat;
+  const count = STATE.items.filter(i => i.category===cat || (cat==='Other' && !STATE.categories.includes(i.category) && !isRecipeCat(i.category))).length;
+  document.getElementById('cat-menu-title').textContent = `${catEmoji(cat)} ${cat}`;
+  document.getElementById('cat-menu-sub').textContent = `${count} item${count!==1?'s':''} in this category`;
+  openModal('cat-menu-overlay');
+}
+window.openCatMenu = openCatMenu;
+
+function getCatMenuItems(){
+  const cat = _catMenuCat;
+  if(!cat) return [];
+  if(cat === 'Other') return STATE.items.filter(i => !STATE.categories.includes(i.category) && !isRecipeCat(i.category));
+  return STATE.items.filter(i => i.category===cat);
+}
+
+async function catMenuDeleteAll(){
+  const cat = _catMenuCat;
+  if(!cat){ closeModal('cat-menu-overlay'); return; }
+  const items = getCatMenuItems();
+  closeModal('cat-menu-overlay');
+  if(!confirm(`Remove all ${items.length} item${items.length!==1?'s':''} from "${cat}"?\n\nThis cannot be undone.`)) return;
+  for(const item of items) await deleteRecord('items', item.id);
+  showToast(`🗑️ ${items.length} item${items.length!==1?'s':''} removed from ${cat}`);
+  _catMenuCat = null;
+}
+window.catMenuDeleteAll = catMenuDeleteAll;
+
+async function catMenuMarkAllOut(){
+  const cat = _catMenuCat;
+  if(!cat){ closeModal('cat-menu-overlay'); return; }
+  const items = getCatMenuItems().filter(i => i.status !== 'out');
+  closeModal('cat-menu-overlay');
+  if(!items.length){ showToast('All items already Out.'); return; }
+  if(!confirm(`Mark all ${items.length} item${items.length!==1?'s':''} in "${cat}" as Out?`)) return;
+  for(const item of items) await saveRecord('items', {...item, status:'out', updated:Date.now()});
+  showToast(`🚫 ${items.length} item${items.length!==1?'s':''} marked as Out`);
+  _catMenuCat = null;
+}
+window.catMenuMarkAllOut = catMenuMarkAllOut;
+
+async function catMenuMarkAllFull(){
+  const cat = _catMenuCat;
+  if(!cat){ closeModal('cat-menu-overlay'); return; }
+  const items = getCatMenuItems().filter(i => i.status !== 'full');
+  closeModal('cat-menu-overlay');
+  if(!items.length){ showToast('All items already Stocked.'); return; }
+  if(!confirm(`Mark all ${items.length} item${items.length!==1?'s':''} in "${cat}" as Stocked?`)) return;
+  for(const item of items) await saveRecord('items', {...item, status:'full', updated:Date.now()});
+  showToast(`✅ ${items.length} item${items.length!==1?'s':''} marked as Stocked`);
+  _catMenuCat = null;
+}
+window.catMenuMarkAllFull = catMenuMarkAllFull;
 
 function toggleCatCollapse(cat){
   if(STATE.collapsedCats.has(cat)) STATE.collapsedCats.delete(cat);
@@ -7535,6 +7642,7 @@ function bindEvents(){
     'recipe-share-overlay',
     'add-missing-overlay',
     'recipe-cat-menu-overlay',
+    'cat-menu-overlay',
     'pantry-add-sheet-overlay',
     'shop-add-sheet-overlay',
     'smart-scan-overlay',
@@ -7569,6 +7677,10 @@ function bindEvents(){
   window.openRecipeCatMenu         = openRecipeCatMenu;
   window.recipeCatMoveToGeneral    = recipeCatMoveToGeneral;
   window.recipeCatDelete           = recipeCatDelete;
+  window.openCatMenu               = openCatMenu;
+  window.catMenuDeleteAll          = catMenuDeleteAll;
+  window.catMenuMarkAllOut         = catMenuMarkAllOut;
+  window.catMenuMarkAllFull        = catMenuMarkAllFull;
   window.openRecipeEdit          = openRecipeEdit;
   window.recalcMlogTotal         = recalcMlogTotal;
   window.showRscanStep           = showRscanStep;
