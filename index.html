@@ -734,6 +734,67 @@ body.mode-shopping .section-divider::before,body.mode-shopping .section-divider:
 .store-search-status{text-align:center;padding:14px;font-size:0.82rem;color:var(--text2);}
 
 @media(min-width:600px){main{padding:22px 24px;}}
+/* ── RECIPE SUGGESTIONS ── */
+:root {
+  --sugg-accent: #7c3aed;
+  --sugg-light: #f0ebff;
+  --sugg-bg: #faf8ff;
+}
+.sugg-scope-bar{display:flex;gap:0;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:14px;}
+.sugg-scope-btn{flex:1;padding:7px 4px;border:none;background:none;border-radius:7px;font-size:0.78rem;font-weight:600;cursor:pointer;color:var(--text2);transition:all 0.15s;font-family:'DM Sans',sans-serif;}
+.sugg-scope-btn.active{background:var(--sugg-accent);color:#fff;box-shadow:0 2px 8px rgba(124,58,237,0.3);}
+.sugg-loading{text-align:center;padding:32px 16px;}
+.sugg-loading-dots{display:flex;gap:6px;justify-content:center;margin-bottom:14px;}
+.sugg-dot{width:10px;height:10px;border-radius:50%;background:var(--sugg-accent);display:inline-block;animation:suggBounce 0.8s infinite ease-in-out;}
+.sugg-dot:nth-child(2){animation-delay:0.15s;}
+.sugg-dot:nth-child(3){animation-delay:0.3s;}
+@keyframes suggBounce{0%,80%,100%{transform:scale(0.6);opacity:0.4;}40%{transform:scale(1);opacity:1;}}
+.sugg-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:transform 0.15s,border-color 0.15s,box-shadow 0.15s;position:relative;}
+.sugg-card:active{transform:scale(0.985);}
+.sugg-card:hover{border-color:var(--sugg-accent);box-shadow:0 2px 12px rgba(124,58,237,0.12);}
+.sugg-card-top{display:flex;align-items:flex-start;gap:12px;}
+.sugg-card-emoji{font-size:1.8rem;line-height:1;flex-shrink:0;}
+.sugg-card-info{flex:1;min-width:0;}
+.sugg-card-name{font-family:'Fraunces',serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:3px;}
+.sugg-card-desc{font-size:0.8rem;color:var(--text2);line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sugg-card-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.sugg-chip{font-size:0.68rem;font-weight:600;padding:3px 9px;border-radius:50px;}
+.sugg-chip.have{background:#dcfce7;color:#166534;}
+.sugg-chip.missing{background:#fef9c3;color:#854d0e;}
+.sugg-chip.out{background:#fee2e2;color:#991b1b;}
+.sugg-chip.time{background:var(--sugg-light);color:var(--sugg-accent);}
+.sugg-card-arrow{font-size:1rem;color:var(--sugg-accent);opacity:0.5;flex-shrink:0;align-self:center;}
+.sugg-error{background:#fff3f3;border:1.5px solid var(--out);border-radius:12px;padding:14px 16px;font-size:0.85rem;color:var(--out);line-height:1.5;margin-bottom:10px;}
+.sugg-empty{text-align:center;padding:32px 16px;color:var(--text2);}
+.sugg-detail-header{background:var(--sugg-accent);color:#fff;border-radius:14px;padding:20px;margin-bottom:16px;}
+.sugg-detail-emoji{font-size:2.8rem;margin-bottom:8px;}
+.sugg-detail-name{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:700;margin-bottom:4px;}
+.sugg-detail-desc{font-size:0.85rem;opacity:0.85;margin-bottom:10px;}
+.sugg-detail-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.sugg-detail-chip{font-size:0.72rem;background:rgba(255,255,255,0.2);border-radius:50px;padding:3px 10px;}
+.sugg-ing-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;margin-bottom:6px;}
+.sugg-ing-qty{font-size:0.8rem;font-weight:600;color:var(--sugg-accent);min-width:56px;flex-shrink:0;}
+.sugg-ing-name{font-size:0.9rem;flex:1;}
+.sugg-ing-badge{font-size:0.65rem;font-weight:700;border-radius:50px;padding:2px 8px;flex-shrink:0;}
+.sugg-ing-badge.have{background:#dcfce7;color:#166534;}
+.sugg-ing-badge.low{background:#fef9c3;color:#854d0e;}
+.sugg-ing-badge.out{background:#fee2e2;color:#991b1b;}
+.sugg-step-row{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:0.87rem;line-height:1.5;}
+.sugg-step-row:last-child{border-bottom:none;}
+.sugg-step-num{font-weight:700;color:var(--sugg-accent);min-width:22px;flex-shrink:0;padding-top:1px;}
+.sugg-save-btn{width:100%;padding:15px;background:var(--sugg-accent);color:#fff;border:none;border-radius:12px;font-family:'Fraunces',serif;font-size:1.05rem;font-weight:700;cursor:pointer;margin-top:14px;transition:transform 0.15s;}
+.sugg-save-btn:active{transform:scale(0.97);}
+.sugg-back-btn{width:100%;padding:12px;background:var(--surface2);color:var(--text);border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;margin-top:8px;}
+
+/* ── DIETARY PREFERENCES ── */
+.diet-prefs-bar{margin-bottom:14px;}
+.diet-prefs-label{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:7px;}
+.diet-pills{display:flex;flex-wrap:wrap;gap:6px;}
+.diet-pill{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:50px;border:1.5px solid var(--border);background:var(--surface);font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s;color:var(--text2);user-select:none;-webkit-tap-highlight-color:transparent;}
+.diet-pill:active{transform:scale(0.95);}
+.diet-pill.active{background:var(--sugg-accent);border-color:var(--sugg-accent);color:#fff;}
+.diet-pill .dp-icon{font-size:0.95rem;line-height:1;}
+
 
 </style>
 </head>
@@ -1945,6 +2006,67 @@ window.addEventListener('unhandledrejection', function(e){
   </div>
 </div>
 
+
+<!-- RECIPE SUGGESTIONS MODAL -->
+<div class="overlay" id="recipe-sugg-overlay" style="z-index:340;">
+  <div class="modal" style="max-height:92vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+
+    <!-- Stage 1: List of suggestions -->
+    <div id="sugg-stage-list">
+      <div class="modal-title">\u2728 Recipe Suggestions</div>
+      <div class="modal-sub" style="margin-bottom:10px;">Based on what\u2019s in your pantry right now.</div>
+
+      <div class="sugg-scope-bar" id="sugg-scope-bar">
+        <button class="sugg-scope-btn active" data-scope="full" onclick="setSuggScope('full')">\u2705 Stocked only</button>
+        <button class="sugg-scope-btn" data-scope="fulllow" onclick="setSuggScope('fulllow')">\u26a0\ufe0f + Low items</button>
+        <button class="sugg-scope-btn" data-scope="all" onclick="setSuggScope('all')">\U0001f6ab + Out items</button>
+      </div>
+
+
+      <!-- Dietary preference pills -->
+      <div class="diet-prefs-bar" id="diet-prefs-bar">
+        <div class="diet-prefs-label">Dietary preferences</div>
+        <div class="diet-pills" id="diet-pills-row"></div>
+      </div>
+      <div id="sugg-list-loading" class="sugg-loading" style="display:none;">
+        <div class="sugg-loading-dots">
+          <span class="sugg-dot"></span><span class="sugg-dot"></span><span class="sugg-dot"></span>
+        </div>
+        <div class="sugg-loading-label">Finding recipe ideas\u2026</div>
+        <div class="sugg-loading-sub">Scanning your pantry and thinking up ideas</div>
+      </div>
+
+      <div id="sugg-list-error" class="sugg-error" style="display:none;"></div>
+      <div id="sugg-list-results" style="display:none;"></div>
+
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-secondary" onclick="closeModal('recipe-sugg-overlay')">Close</button>
+        <button class="btn" id="btn-sugg-refresh"
+          style="background:var(--sugg-accent);color:#fff;"
+          onclick="runSuggestionStage1()">\u21bb Refresh Ideas</button>
+      </div>
+    </div>
+
+    <!-- Stage 2: Full recipe detail -->
+    <div id="sugg-stage-detail" style="display:none;">
+      <div id="sugg-detail-loading" class="sugg-loading" style="display:none;">
+        <div class="sugg-loading-dots">
+          <span class="sugg-dot"></span><span class="sugg-dot"></span><span class="sugg-dot"></span>
+        </div>
+        <div class="sugg-loading-label" id="sugg-detail-loading-label">Building full recipe\u2026</div>
+        <div class="sugg-loading-sub">Writing out ingredients and steps</div>
+      </div>
+
+      <div id="sugg-detail-error" class="sugg-error" style="display:none;"></div>
+      <div id="sugg-detail-content" style="display:none;"></div>
+
+      <button class="sugg-back-btn" id="btn-sugg-back" onclick="suggBackToList()">\u2190 Back to suggestions</button>
+    </div>
+
+  </div>
+</div>
+
 <!-- FEEDBACK FAB -->
 <button class="feedback-fab" id="btn-feedback-fab" title="Rate this feature">★</button>
 
@@ -2582,6 +2704,7 @@ async function loadAllData(){
       persistSettings();
       applyCurrency(STATE.currency);
     }
+    loadDietPrefsFromSettings(val);
   });
   subscribe('mealTemplates', val => {
     STATE.mealTemplates = val ? Object.entries(val).map(([k,t])=>t.id?t:{...t,id:k}) : [];
@@ -5779,6 +5902,10 @@ function renderCookTab(shareMode=false){
         📷 Scan a Recipe
         <span style="font-size:0.72rem;font-weight:400;opacity:0.85;">photo · PDF · handwritten</span>
       </button>
+      <button class="btn" onclick="openRecipeSuggestions()" style="flex:1;background:var(--sugg-accent,#7c3aed);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:14px;font-size:0.95rem;font-weight:600;border:none;cursor:pointer;box-shadow:0 3px 10px rgba(124,58,237,0.3);">
+        ✨ Suggest Recipes
+        <span style="font-size:0.72rem;font-weight:400;opacity:0.85;">from your pantry</span>
+      </button>
       ${STATE.recipes.length ? `<button onclick="toggleRecipeShareMode()" title="Share recipes"
         style="padding:13px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:1.1rem;flex-shrink:0;">
         ${shareMode ? '✕' : '↗️'}
@@ -7192,6 +7319,15 @@ function generateFeedCards(){
     }
   }
 
+  // ── 3b. SUGGEST RECIPES CTA ───────────────────────────────────
+  if(STATE.items.filter(i=>i.status!=='out').length >= 4 && cooldownOk('sugg-feed-cta', 6*HOUR)){
+    const stockedCount = STATE.items.filter(i=>i.status==='full').length;
+    cards.push(feedCard('meal','✨','Recipe ideas from your pantry',
+      `You have ${stockedCount} stocked item${stockedCount!==1?'s':''} — tap to get personalised recipe suggestions based on what you actually have.`,
+      { action:'Get Suggestions', actionFn:"openRecipeSuggestions()", priority:72 }
+    ));
+  }
+
   // ── 4. RECENT SHOP ACTIVITY ───────────────────────────────────────────────
   const recentLogs = [...STATE.shopLogs].sort((a,b)=>b.date-a.date).slice(0,3);
   for(const log of recentLogs){
@@ -7674,6 +7810,8 @@ function bindEvents(){
   window.openAddStore            = openAddStore;
   window.openAddModalForCategory = openAddModalForCategory;
   window.openRecipeDetail          = openRecipeDetail;
+  window.openRecipeSuggestions     = openRecipeSuggestions;
+  window.toggleDietPref            = toggleDietPref;
   window.openAddMissingConfirm     = openAddMissingConfirm;
   window.confirmAddMissing         = confirmAddMissing;
   window.openRecipeCatMenu         = openRecipeCatMenu;
@@ -8032,6 +8170,411 @@ function initPWA(){
 // ══════════════════════════════════════════════════════════════════════════════
 // START
 // ══════════════════════════════════════════════════════════════════════════════
+
+// ── DIETARY PREFERENCES ──────────────────────────────────────────────────────
+// Stored in Firebase under familySettings.dietaryPrefs (array of pref keys)
+// so all family devices share the same setting.
+
+const DIET_OPTIONS = [
+  { key: 'high-protein',  icon: '\U0001f969', label: 'High Protein'  },
+  { key: 'high-veggie',   icon: '\U0001f966', label: 'High Veggie'   },
+  { key: 'vegetarian',    icon: '\U0001f331', label: 'Vegetarian'    },
+  { key: 'vegan',         icon: '\U0001f33f', label: 'Vegan'         },
+  { key: 'gluten-free',   icon: '\U0001f33e', label: 'Gluten-Free'   },
+  { key: 'dairy-free',    icon: '\U0001f95b', label: 'Dairy-Free'    },
+  { key: 'quick',         icon: '\u26a1',     label: 'Quick (<30 min)'},
+  { key: 'low-calorie',   icon: '\U0001f525', label: 'Low Calorie'   },
+];
+
+// In-memory set of active preference keys — synced from/to Firebase
+let _dietPrefs = new Set();
+
+// Build the constraint text injected into Gemini prompts
+function getDietPromptConstraints(){
+  if(!_dietPrefs.size) return '';
+  const active = DIET_OPTIONS.filter(o => _dietPrefs.has(o.key));
+  const lines = active.map(o => {
+    switch(o.key){
+      case 'high-protein':  return '- High protein: prioritise meat, fish, eggs, legumes, dairy in ingredients and recipe selection.';
+      case 'high-veggie':   return '- High vegetable content: every recipe should feature at least 2-3 different vegetables prominently.';
+      case 'vegetarian':    return '- VEGETARIAN: absolutely no meat, poultry, or seafood. Eggs and dairy are allowed.';
+      case 'vegan':         return '- VEGAN: absolutely no animal products whatsoever — no meat, fish, eggs, dairy, honey, or any animal-derived ingredient.';
+      case 'gluten-free':   return '- GLUTEN-FREE: no wheat, barley, rye, or regular oats. Use gluten-free alternatives where needed.';
+      case 'dairy-free':    return '- DAIRY-FREE: no milk, cheese, butter, cream, yoghurt, or any dairy product.';
+      case 'quick':         return '- QUICK meals only: total cook time must be under 30 minutes. No slow-cook or long prep recipes.';
+      case 'low-calorie':   return '- LOW CALORIE: favour lean proteins, plenty of vegetables, minimal added fats, sugars, or heavy sauces.';
+      default: return '';
+    }
+  }).filter(Boolean);
+  return '\nDIETARY REQUIREMENTS (these are strict — follow all of them):\n' + lines.join('\n') + '\n';
+}
+
+// Render the pill row in the modal
+function renderDietPills(){
+  const row = document.getElementById('diet-pills-row');
+  if(!row) return;
+  row.innerHTML = DIET_OPTIONS.map(o => `
+    <div class="diet-pill${_dietPrefs.has(o.key)?' active':''}"
+         onclick="toggleDietPref('${o.key}')"
+         title="${o.label}">
+      <span class="dp-icon">${o.icon}</span>
+      <span>${o.label}</span>
+    </div>`).join('');
+}
+
+async function toggleDietPref(key){
+  if(_dietPrefs.has(key)) _dietPrefs.delete(key);
+  else _dietPrefs.add(key);
+  renderDietPills();
+  // Persist to Firebase so all family members share it
+  await saveDietPrefs();
+  // Clear cached suggestions so next open re-generates with new prefs
+  _suggList = [];
+}
+window.toggleDietPref = toggleDietPref;
+
+async function saveDietPrefs(){
+  if(!STATE.familyCode || STATE.familyCode === 'ADMIN-1337') return;
+  try {
+    const existing = await load('familySettings', {});
+    await save('familySettings', { ...existing, dietaryPrefs: [..._dietPrefs] });
+  } catch(e){ console.error('Failed to save dietary prefs:', e); }
+}
+
+function loadDietPrefsFromSettings(familySettings){
+  if(familySettings && Array.isArray(familySettings.dietaryPrefs)){
+    _dietPrefs = new Set(familySettings.dietaryPrefs);
+  } else {
+    _dietPrefs = new Set();
+  }
+  renderDietPills();
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RECIPE SUGGESTIONS — Two-stage AI feature
+// Stage 1: Fast list of 6-8 title/description/match ideas
+// Stage 2: Full recipe on tap — ingredients, steps, cook time
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _suggScope = 'fulllow';
+let _suggList  = [];
+let _suggDetailResult = null;
+
+function getSuggItems(){
+  if(_suggScope === 'full')    return STATE.items.filter(i => i.status === 'full');
+  if(_suggScope === 'fulllow') return STATE.items.filter(i => i.status === 'full' || i.status === 'low');
+  return STATE.items;
+}
+
+function setSuggScope(scope){
+  _suggScope = scope;
+  document.querySelectorAll('.sugg-scope-btn').forEach(el =>
+    el.classList.toggle('active', el.dataset.scope === scope)
+  );
+  runSuggestionStage1();
+}
+window.setSuggScope = setSuggScope;
+
+function openRecipeSuggestions(){
+  document.getElementById('sugg-stage-list').style.display   = '';
+  document.getElementById('sugg-stage-detail').style.display  = 'none';
+  document.getElementById('sugg-list-results').style.display  = 'none';
+  document.getElementById('sugg-list-error').style.display    = 'none';
+  document.getElementById('sugg-list-loading').style.display  = 'none';
+  document.querySelectorAll('.sugg-scope-btn').forEach(el =>
+    el.classList.toggle('active', el.dataset.scope === _suggScope)
+  );
+  renderDietPills();
+  openModal('recipe-sugg-overlay');
+  if(!_suggList.length) runSuggestionStage1();
+  else renderSuggList();
+}
+window.openRecipeSuggestions = openRecipeSuggestions;
+
+async function runSuggestionStage1(){
+  _suggList = [];
+  _suggDetailResult = null;
+
+  document.getElementById('sugg-list-loading').style.display  = '';
+  document.getElementById('sugg-list-results').style.display  = 'none';
+  document.getElementById('sugg-list-error').style.display    = 'none';
+  document.getElementById('btn-sugg-refresh').disabled = true;
+
+  const scopeItems = getSuggItems();
+  if(!scopeItems.length){
+    document.getElementById('sugg-list-loading').style.display = 'none';
+    document.getElementById('sugg-list-error').style.display   = '';
+    document.getElementById('sugg-list-error').textContent =
+      'No ingredients available for the selected scope. Try including Low or Out items.';
+    document.getElementById('btn-sugg-refresh').disabled = false;
+    return;
+  }
+
+  const byCategory = {};
+  scopeItems.forEach(item => {
+    const cat = item.category || 'Other';
+    if(!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(`${item.name} (${item.status})`);
+  });
+  const pantryText = Object.entries(byCategory)
+    .map(([cat, items]) => `${cat}: ${items.join(', ')}`)
+    .join('\n');
+
+  const lowItems = STATE.items.filter(i => i.status === 'low').map(i => i.name);
+  const outItems = STATE.items.filter(i => i.status === 'out').map(i => i.name);
+  const existingRecipeNames = STATE.recipes.map(r => r.name);
+
+  const prompt = `You are a friendly home cooking assistant. Based on the following pantry contents, suggest 7 different recipes the family could realistically make.
+
+PANTRY CONTENTS (available ingredients):
+${pantryText}
+
+${lowItems.length ? `LOW (running out, usable): ${lowItems.join(', ')}` : ''}
+${outItems.length && _suggScope === 'all' ? `OUT (would need buying): ${outItems.join(', ')}` : ''}
+${existingRecipeNames.length ? `\nALREADY SAVED RECIPES (avoid duplicating): ${existingRecipeNames.join(', ')}` : ''}
+${getDietPromptConstraints()}
+Return ONLY a valid JSON array — no markdown, no backticks, no explanation, no trailing commas.
+
+Each element must follow this exact shape:
+{
+  "emoji": "🍝",
+  "name": "Spaghetti Aglio e Olio",
+  "description": "Quick garlic and olive oil pasta with a kick",
+  "cookTime": "20 min",
+  "haveIngredients": ["spaghetti", "olive oil", "garlic"],
+  "missingIngredients": ["parsley", "chilli flakes"]
+}
+
+Rules:
+- Vary the recipes: include quick weeknight meals, a comfort dish, something lighter, something more ambitious.
+- haveIngredients: ingredients from the pantry list above that this recipe needs.
+- missingIngredients: ingredients this recipe needs that are NOT in the pantry (keep short — max 4).
+- cookTime: realistic total time as plain text.
+- Return ONLY the JSON array. No other text.`;
+
+  try {
+    const raw = await callGemini(prompt, [], { temperature: 0.8, maxOutputTokens: 2048 });
+    let cleaned = raw.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const s = cleaned.indexOf('['), e = cleaned.lastIndexOf(']');
+      if(s !== -1 && e > s) parsed = JSON.parse(cleaned.substring(s, e+1));
+      else throw new Error('Could not parse suggestions from AI response.');
+    }
+
+    if(!Array.isArray(parsed) || !parsed.length) throw new Error('No suggestions returned.');
+    _suggList = parsed;
+    renderSuggList();
+  } catch(e){
+    document.getElementById('sugg-list-loading').style.display = 'none';
+    document.getElementById('sugg-list-error').style.display   = '';
+    document.getElementById('sugg-list-error').textContent = '⚠️ ' + (e.message || 'Could not generate suggestions. Check your connection and try again.');
+    console.error('Suggestion stage 1 error:', e);
+  }
+  document.getElementById('btn-sugg-refresh').disabled = false;
+}
+window.runSuggestionStage1 = runSuggestionStage1;
+
+function renderSuggList(){
+  document.getElementById('sugg-list-loading').style.display  = 'none';
+  document.getElementById('sugg-list-error').style.display    = 'none';
+  document.getElementById('sugg-list-results').style.display  = '';
+
+  const html = _suggList.map((s, idx) => {
+    const have    = (s.haveIngredients  || []).length;
+    const missing = (s.missingIngredients || []).length;
+    const total   = have + missing;
+    const pct     = total > 0 ? Math.round((have / total) * 100) : 100;
+
+    const haveChip    = have    > 0 ? `<span class="sugg-chip have">✓ ${have} in pantry</span>` : '';
+    const missingChip = missing > 0 ? `<span class="sugg-chip missing">+ ${missing} needed</span>` : '';
+    const timeChip    = s.cookTime ? `<span class="sugg-chip time">⏱ ${escHtml(s.cookTime)}</span>` : '';
+    const matchChip   = `<span class="sugg-chip ${pct===100?'have':pct>=60?'missing':'out'}">${pct}% match</span>`;
+
+    return `<div class="sugg-card" onclick="selectSuggestion(${idx})">
+      <div class="sugg-card-top">
+        <div class="sugg-card-emoji">${escHtml(s.emoji || '🍽️')}</div>
+        <div class="sugg-card-info">
+          <div class="sugg-card-name">${escHtml(s.name)}</div>
+          <div class="sugg-card-desc">${escHtml(s.description || '')}</div>
+        </div>
+        <div class="sugg-card-arrow">›</div>
+      </div>
+      <div class="sugg-card-chips">
+        ${matchChip}${haveChip}${missingChip}${timeChip}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('sugg-list-results').innerHTML = html ||
+    '<div class="sugg-empty">No suggestions found. Try a different scope or refresh.</div>';
+}
+
+async function selectSuggestion(idx){
+  const suggestion = _suggList[idx];
+  if(!suggestion) return;
+
+  document.getElementById('sugg-stage-list').style.display   = 'none';
+  document.getElementById('sugg-stage-detail').style.display = '';
+  document.getElementById('sugg-detail-loading').style.display  = '';
+  document.getElementById('sugg-detail-error').style.display    = 'none';
+  document.getElementById('sugg-detail-content').style.display  = 'none';
+  document.getElementById('btn-sugg-back').style.display        = 'none';
+
+  const loadLabel = document.getElementById('sugg-detail-loading-label');
+  if(loadLabel) loadLabel.textContent = `Building "${suggestion.name}"…`;
+
+  const scopeItems = getSuggItems();
+  const allItemNames = STATE.items.map(i => i.name);
+  const pantryList = scopeItems.map(i => `${i.name} (${i.status})`).join(', ');
+
+  const prompt = `You are a home cooking assistant. Write a complete, detailed recipe for "${suggestion.name}".
+
+Description: "${suggestion.description || ''}"
+Estimated cook time: "${suggestion.cookTime || ''}"
+
+Pantry available (use these ingredients wherever possible):
+${pantryList}
+${getDietPromptConstraints()}
+Return ONLY a valid JSON object — no markdown, no backticks, no trailing commas:
+{
+  "name": "${suggestion.name}",
+  "description": "One appealing sentence about the dish",
+  "emoji": "${suggestion.emoji || '🍽️'}",
+  "cookTime": "realistic total time",
+  "servings": "4",
+  "ingredients": [
+    { "qty": "200g", "name": "spaghetti" },
+    { "qty": "3 cloves", "name": "garlic" }
+  ],
+  "steps": [
+    "Bring a large pot of salted water to the boil.",
+    "Cook the spaghetti according to packet instructions until al dente."
+  ]
+}
+
+Rules:
+- ingredients: exact quantities, common household measurements.
+- steps: clear actions as plain strings. Aim for 6-10 steps.
+- Prioritise ingredients from the pantry.
+- Return ONLY the JSON object. No other text.`;
+
+  try {
+    const raw = await callGemini(prompt, [], { temperature: 0.5, maxOutputTokens: 3000 });
+    let cleaned = raw.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+
+    let result;
+    try {
+      result = JSON.parse(cleaned);
+    } catch {
+      const s = cleaned.indexOf('{'), e = cleaned.lastIndexOf('}');
+      if(s !== -1 && e > s) result = JSON.parse(cleaned.substring(s, e+1));
+      else throw new Error('Could not parse the full recipe. Try again.');
+    }
+
+    _suggDetailResult = result;
+    renderSuggDetail(result);
+  } catch(e){
+    document.getElementById('sugg-detail-loading').style.display = 'none';
+    document.getElementById('sugg-detail-error').style.display   = '';
+    document.getElementById('sugg-detail-error').textContent = '⚠️ ' + (e.message || 'Could not build recipe. Try again.');
+    console.error('Suggestion stage 2 error:', e);
+  }
+  document.getElementById('btn-sugg-back').style.display = '';
+}
+window.selectSuggestion = selectSuggestion;
+
+function renderSuggDetail(recipe){
+  document.getElementById('sugg-detail-loading').style.display = 'none';
+  document.getElementById('sugg-detail-content').style.display = '';
+
+  const fullNames = new Set(STATE.items.filter(i=>i.status==='full').map(i=>i.name.toLowerCase().trim()));
+  const lowNames  = new Set(STATE.items.filter(i=>i.status==='low').map(i=>i.name.toLowerCase().trim()));
+
+  function matchStatus(ingName){
+    const k = (ingName||'').toLowerCase().trim();
+    for(const n of fullNames){ if(n===k||n.includes(k)||k.includes(n)) return 'have'; }
+    for(const n of lowNames) { if(n===k||n.includes(k)||k.includes(n)) return 'low';  }
+    return 'out';
+  }
+
+  const ingsHtml = (recipe.ingredients || []).map(ing => {
+    const status = matchStatus(ing.name);
+    const badgeLabel = status==='have'?'✓ Stocked':status==='low'?'⚠️ Low':'+ Needed';
+    return `<div class="sugg-ing-row">
+      <span class="sugg-ing-qty">${escHtml(ing.qty || '')}</span>
+      <span class="sugg-ing-name">${escHtml(ing.name || '')}</span>
+      <span class="sugg-ing-badge ${status}">${badgeLabel}</span>
+    </div>`;
+  }).join('') || '<div style="color:var(--text2);font-size:0.85rem;padding:4px 0;">No ingredients listed.</div>';
+
+  const stepsHtml = (recipe.steps || []).map((step, i) =>
+    `<div class="sugg-step-row">
+      <span class="sugg-step-num">${i+1}</span>
+      <span>${escHtml(step)}</span>
+    </div>`
+  ).join('') || '<div style="color:var(--text2);font-size:0.85rem;padding:4px 0;">No steps listed.</div>';
+
+  const totalIngs  = (recipe.ingredients || []).length;
+  const stockedCnt = (recipe.ingredients || []).filter(i => matchStatus(i.name)==='have').length;
+  const lowCnt     = (recipe.ingredients || []).filter(i => matchStatus(i.name)==='low').length;
+  const neededCnt  = totalIngs - stockedCnt - lowCnt;
+
+  document.getElementById('sugg-detail-content').innerHTML = `
+    <div class="sugg-detail-header">
+      <div class="sugg-detail-emoji">${escHtml(recipe.emoji || '🍽️')}</div>
+      <div class="sugg-detail-name">${escHtml(recipe.name || '')}</div>
+      <div class="sugg-detail-desc">${escHtml(recipe.description || '')}</div>
+      <div class="sugg-detail-chips">
+        ${recipe.cookTime ? `<span class="sugg-detail-chip">⏱ ${escHtml(recipe.cookTime)}</span>` : ''}
+        ${recipe.servings  ? `<span class="sugg-detail-chip">🍽 Serves ${escHtml(recipe.servings)}</span>` : ''}
+        <span class="sugg-detail-chip">🧺 ${totalIngs} ingredients</span>
+        ${stockedCnt > 0 ? `<span class="sugg-detail-chip">✓ ${stockedCnt} stocked</span>` : ''}
+        ${neededCnt  > 0 ? `<span class="sugg-detail-chip">+ ${neededCnt} to buy</span>` : ''}
+      </div>
+    </div>
+    <div class="recipe-section-title">Ingredients</div>
+    ${ingsHtml}
+    <div class="recipe-section-title" style="margin-top:18px;">Steps</div>
+    ${stepsHtml}
+    <button class="sugg-save-btn" onclick="saveSuggestedRecipe()">💾 Save to My Recipes</button>
+  `;
+}
+
+async function saveSuggestedRecipe(){
+  if(!_suggDetailResult){ showToast('No recipe to save.'); return; }
+  const r = _suggDetailResult;
+  const recipe = {
+    id: uid(),
+    name: r.name || 'Untitled Recipe',
+    description: r.description || '',
+    emoji: r.emoji || '🍽️',
+    cookTime: r.cookTime || '',
+    ingredients: (r.ingredients || []).map(i => ({ qty: i.qty || '', name: i.name || '' })),
+    steps: (r.steps || []).map(s => String(s)),
+    updated: Date.now(),
+  };
+  await saveRecord('recipes', recipe);
+  closeModal('recipe-sugg-overlay');
+  _suggList = [];
+  setMode('cook');
+  showToast(`✅ "${recipe.name}" saved to your recipes!`);
+}
+window.saveSuggestedRecipe = saveSuggestedRecipe;
+
+function suggBackToList(){
+  document.getElementById('sugg-stage-detail').style.display = 'none';
+  document.getElementById('sugg-stage-list').style.display   = '';
+  _suggDetailResult = null;
+}
+window.suggBackToList = suggBackToList;
+
 bindEvents();
 initPWA();
 init();
