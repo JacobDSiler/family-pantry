@@ -8232,6 +8232,32 @@ function setSuggScope(scope){
 }
 window.setSuggScope = setSuggScope;
 
+
+// ── ROBUST JSON PARSER ───────────────────────────────────────────────────────
+function robustParseJSON(raw){
+  let s = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+  // Extract outermost array or object
+  const arrS = s.indexOf('['), arrE = s.lastIndexOf(']');
+  const objS = s.indexOf('{'), objE = s.lastIndexOf('}');
+  if(arrS !== -1 && arrE > arrS) s = s.substring(arrS, arrE+1);
+  else if(objS !== -1 && objE > objS) s = s.substring(objS, objE+1);
+  // Fix trailing commas
+  s = s.replace(/,\s*([\]\}])/g, '$1');
+  // Fix unescaped control characters
+  s = s.replace(/[\x00-\x1F\x7F]/g, ' ');
+  // Fix fancy quotes
+  s = s.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+  try { return JSON.parse(s); } catch(e){
+    // Last resort: truncate to last complete array element
+    const lastComma = s.lastIndexOf('},');
+    if(lastComma > 0){
+      const trimmed = s.substring(0, lastComma+1) + (s.trimStart().startsWith('[') ? ']' : '}');
+      try { return JSON.parse(trimmed); } catch(e2){}
+    }
+    throw new Error('Could not parse AI response. Please try again.');
+  }
+}
+
 function openRecipeSuggestions(){
   document.getElementById('sugg-stage-list').style.display   = '';
   document.getElementById('sugg-stage-detail').style.display = 'none';
@@ -8277,34 +8303,11 @@ async function runSuggestionStage1(){
   const existingNames = STATE.recipes.map(r => r.name);
   const dietConstraints = getDietPromptConstraints();
 
-  const prompt = `You are a home cooking assistant. Based on the following pantry contents, suggest 6 recipes the family could realistically make.
-
-PANTRY CONTENTS:
-${pantryText}
-${existingNames.length ? 'AVOID DUPLICATING: ' + existingNames.join(', ') : ''}
-${dietConstraints}
-Return ONLY a valid JSON array — no markdown, no backticks, no trailing commas.
-
-Each element:
-{"emoji":"🍝","name":"Recipe Name","description":"One-line tagline","cookTime":"25 min","haveIngredients":["pasta","garlic"],"missingIngredients":["parsley"]}
-
-Rules:
-- haveIngredients: items from pantry this recipe uses
-- missingIngredients: max 4 items NOT in pantry
-- Vary styles: quick, comfort, light, ambitious
-- Return ONLY the JSON array.`;
+  const prompt = 'Suggest 6 recipes for this pantry. Return ONLY a JSON array, no other text, no markdown.\n\nPantry:\n' + pantryText + '\n' + (existingNames.length ? 'Skip these existing recipes: ' + existingNames.join(', ') + '\n' : '') + dietConstraints + '\nJSON format (each item):\n{"emoji":"🍝","name":"Pasta Name","description":"Short tagline under 60 chars","cookTime":"20 min","haveIngredients":["pasta","garlic"],"missingIngredients":["parsley"]}\n\nRules: haveIngredients=items from pantry used; missingIngredients=max 3 items not in pantry; descriptions must NOT contain quotes or apostrophes; vary the styles.';
 
   try {
-    const raw = await callGemini(prompt, [], { temperature: 0.8, maxOutputTokens: 4096 });
-    let cleaned = raw.replace(/^\`\`\`(?:json)?\s*/,'').replace(/\s*\`\`\`$/,'').trim();
-    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
-    let parsed;
-    try { parsed = JSON.parse(cleaned); }
-    catch {
-      const s = cleaned.indexOf('['), e = cleaned.lastIndexOf(']');
-      if(s !== -1 && e > s) parsed = JSON.parse(cleaned.substring(s, e+1));
-      else throw new Error('Could not parse suggestions — please try again.');
-    }
+    const raw = await callGemini(prompt, [], { temperature: 0.7, maxOutputTokens: 4096 });
+    const parsed = robustParseJSON(raw);
     if(!Array.isArray(parsed) || !parsed.length) throw new Error('No suggestions returned — please try again.');
     _suggList = parsed;
     renderSuggList();
@@ -8367,27 +8370,13 @@ async function selectSuggestion(idx){
   const pantryList = scopeItems.map(i => i.name + ' (' + i.status + ')').join(', ');
   const dietConstraints = getDietPromptConstraints();
 
-  const prompt = `You are a home cooking assistant. Write a complete detailed recipe for "${s.name}".
-Description: "${s.description || ''}"
-Cook time: "${s.cookTime || ''}"
-
-Pantry available (use these where possible):
-${pantryList}
-${dietConstraints}
-Return ONLY a valid JSON object — no markdown, no backticks:
-{"name":"${s.name}","description":"one sentence","emoji":"${s.emoji || '🍽️'}","cookTime":"time","servings":"4","ingredients":[{"qty":"200g","name":"pasta"}],"steps":["Step one.","Step two."]}`;
+  const recipeName = s.name.replace(/"/g, '');
+  const prompt = 'Write a complete recipe for "' + recipeName + '". Return ONLY a JSON object, no markdown, no other text.\n\nPantry available: ' + pantryList + '\n' + dietConstraints + '\nJSON format:\n{"name":"' + recipeName + '","description":"One sentence, no quotes","emoji":"' + (s.emoji||'🍽️') + '","cookTime":"' + (s.cookTime||'30 min') + '","servings":"4","ingredients":[{"qty":"200g","name":"pasta"}],"steps":["Do this first.","Do this second."]}\n\nRules: 6-10 steps; use pantry ingredients where possible; description must NOT contain quotes or apostrophes.';
 
   try {
     const raw = await callGemini(prompt, [], { temperature: 0.4, maxOutputTokens: 4096 });
-    let cleaned = raw.replace(/^\`\`\`(?:json)?\s*/,'').replace(/\s*\`\`\`$/,'').trim();
-    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
-    let result;
-    try { result = JSON.parse(cleaned); }
-    catch {
-      const s2 = cleaned.indexOf('{'), e2 = cleaned.lastIndexOf('}');
-      if(s2 !== -1 && e2 > s2) result = JSON.parse(cleaned.substring(s2, e2+1));
-      else throw new Error('Could not parse the recipe — please try again.');
-    }
+    const result = robustParseJSON(raw);
+    if(!result || !result.name) throw new Error('Recipe came back empty — please try again.');
     _suggDetailResult = result;
     renderSuggDetail(result);
   } catch(e){
