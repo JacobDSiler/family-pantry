@@ -8370,13 +8370,36 @@ async function selectSuggestion(idx){
   const pantryList = scopeItems.map(i => i.name + ' (' + i.status + ')').join(', ');
   const dietConstraints = getDietPromptConstraints();
 
-  const recipeName = s.name.replace(/"/g, '');
-  const prompt = 'Write a complete recipe for "' + recipeName + '". Return ONLY a JSON object, no markdown, no other text.\n\nPantry available: ' + pantryList + '\n' + dietConstraints + '\nJSON format:\n{"name":"' + recipeName + '","description":"One sentence, no quotes","emoji":"' + (s.emoji||'🍽️') + '","cookTime":"' + (s.cookTime||'30 min') + '","servings":"4","ingredients":[{"qty":"200g","name":"pasta"}],"steps":["Do this first.","Do this second."]}\n\nRules: 6-10 steps; use pantry ingredients where possible; description must NOT contain quotes or apostrophes.';
+  const prompt = [
+    'Write a complete recipe for the dish described below.',
+    'Return ONLY a raw JSON object — no markdown fences, no extra text before or after.',
+    '',
+    'DISH: ' + s.name,
+    'DESCRIPTION HINT: ' + (s.description || ''),
+    'COOK TIME HINT: ' + (s.cookTime || ''),
+    '',
+    'PANTRY AVAILABLE (use these where possible):',
+    pantryList,
+    dietConstraints,
+    '',
+    'Return this exact JSON structure:',
+    '{"name":"dish name here","description":"one sentence tagline","emoji":"single emoji","cookTime":"e.g. 30 min","servings":"4","ingredients":[{"qty":"200g","name":"ingredient"}],"steps":["Step 1 text.","Step 2 text."]}',
+    '',
+    'Rules:',
+    '- 6 to 10 steps',
+    '- Use pantry ingredients where possible',
+    '- Keep description under 80 characters with no quote characters inside it',
+    '- Return ONLY the JSON object, nothing else',
+  ].join('\n');
 
   try {
     const raw = await callGemini(prompt, [], { temperature: 0.4, maxOutputTokens: 4096 });
+    console.log('[Suggestions stage2] raw response:', raw.substring(0, 500));
     const result = robustParseJSON(raw);
-    if(!result || !result.name) throw new Error('Recipe came back empty — please try again.');
+    if(!result || (!result.name && !result.steps)) throw new Error('Recipe came back empty — please try again.');
+    // Fill in name from suggestion if Gemini omitted it
+    if(!result.name) result.name = s.name;
+    if(!result.emoji) result.emoji = s.emoji || '🍽️';
     _suggDetailResult = result;
     renderSuggDetail(result);
   } catch(e){
