@@ -8234,28 +8234,44 @@ window.setSuggScope = setSuggScope;
 
 
 // ── ROBUST JSON PARSER ───────────────────────────────────────────────────────
-function robustParseJSON(raw){
-  let s = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
-  // Extract outermost array or object
-  const arrS = s.indexOf('['), arrE = s.lastIndexOf(']');
-  const objS = s.indexOf('{'), objE = s.lastIndexOf('}');
-  if(arrS !== -1 && arrE > arrS) s = s.substring(arrS, arrE+1);
-  else if(objS !== -1 && objE > objS) s = s.substring(objS, objE+1);
-  // Fix trailing commas
-  s = s.replace(/,\s*([\]\}])/g, '$1');
-  // Fix unescaped control characters
-  s = s.replace(/[\x00-\x1F\x7F]/g, ' ');
-  // Fix fancy quotes
-  s = s.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
-  try { return JSON.parse(s); } catch(e){
-    // Last resort: truncate to last complete array element
-    const lastComma = s.lastIndexOf('},');
-    if(lastComma > 0){
-      const trimmed = s.substring(0, lastComma+1) + (s.trimStart().startsWith('[') ? ']' : '}');
-      try { return JSON.parse(trimmed); } catch(e2){}
+function extractJSON(s, openChar, closeChar){
+  const start = s.indexOf(openChar);
+  if(start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  for(let i = start; i < s.length; i++){
+    const c = s[i];
+    if(esc){ esc = false; continue; }
+    if(c === '\\' && inStr){ esc = true; continue; }
+    if(c === '"' && !esc) inStr = !inStr;
+    if(!inStr){
+      if(c === openChar) depth++;
+      else if(c === closeChar){ depth--; if(depth === 0) return s.substring(start, i+1); }
     }
-    throw new Error('Could not parse AI response. Please try again.');
   }
+  return null;
+}
+
+function robustParseJSON(raw){
+  // 1. Strip markdown fences
+  let s = raw.replace(/^[\s\S]*?```(?:json)?\s*/i,'').replace(/\s*```[\s\S]*$/,'').trim();
+  if(!s) s = raw.trim();
+  // 2. Fix fancy/curly quotes
+  s = s.replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"');
+  // 3. Fix unescaped control characters inside strings
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g,' ');
+  // 4. Try to extract a proper matched bracket structure
+  const extracted = extractJSON(s, '[', ']') || extractJSON(s, '{', '}') || s;
+  // 5. Fix trailing commas
+  const cleaned = extracted.replace(/,\s*([\]\}])/g,'$1');
+  // 6. Try direct parse
+  try { return JSON.parse(cleaned); } catch(e1){}
+  // 7. Truncate array to last complete element
+  const lastClose = cleaned.lastIndexOf('},');
+  if(lastClose > 0){
+    const trimmed = cleaned.substring(0, lastClose+1) + (cleaned.trimStart()[0]==='['?']':'}');
+    try { return JSON.parse(trimmed); } catch(e2){}
+  }
+  throw new Error('Could not parse AI response — please try again.');
 }
 
 function openRecipeSuggestions(){
@@ -8306,7 +8322,22 @@ async function runSuggestionStage1(){
   const prompt = 'Suggest 6 recipes for this pantry. Return ONLY a JSON array, no other text, no markdown.\n\nPantry:\n' + pantryText + '\n' + (existingNames.length ? 'Skip these existing recipes: ' + existingNames.join(', ') + '\n' : '') + dietConstraints + '\nJSON format (each item):\n{"emoji":"🍝","name":"Pasta Name","description":"Short tagline under 60 chars","cookTime":"20 min","haveIngredients":["pasta","garlic"],"missingIngredients":["parsley"]}\n\nRules: haveIngredients=items from pantry used; missingIngredients=max 3 items not in pantry; descriptions must NOT contain quotes or apostrophes; vary the styles.';
 
   try {
-    const raw = await callGemini(prompt, [], { temperature: 0.7, maxOutputTokens: 4096 });
+    // Retry up to 3 times on transient errors
+    let raw;
+    for(let attempt = 1; attempt <= 3; attempt++){
+      try {
+        raw = await callGemini(prompt, [], { temperature: 0.7, maxOutputTokens: 4096 });
+        break;
+      } catch(callErr){
+        if(attempt === 3) throw callErr;
+        const msg = callErr.message || '';
+        if(msg.includes('503') || msg.includes('demand') || msg.includes('timeout')){
+          const lbl = document.getElementById('sugg-loading-label');
+          if(lbl) lbl.textContent = `Busy — retrying (${attempt}/3)...`;
+          await new Promise(r => setTimeout(r, 2000 * attempt));
+        } else { throw callErr; }
+      }
+    }
     const parsed = robustParseJSON(raw);
     if(!Array.isArray(parsed) || !parsed.length) throw new Error('No suggestions returned — please try again.');
     _suggList = parsed;
@@ -8393,8 +8424,23 @@ async function selectSuggestion(idx){
   ].join('\n');
 
   try {
-    const raw = await callGemini(prompt, [], { temperature: 0.4, maxOutputTokens: 4096 });
-    console.log('[Suggestions stage2] raw response:', raw.substring(0, 500));
+    // Retry up to 2 times on transient errors (503, network blip)
+    let raw;
+    for(let attempt = 1; attempt <= 3; attempt++){
+      try {
+        raw = await callGemini(prompt, [], { temperature: 0.4, maxOutputTokens: 4096 });
+        break;
+      } catch(callErr){
+        if(attempt === 3) throw callErr;
+        const msg = callErr.message || '';
+        if(msg.includes('503') || msg.includes('demand') || msg.includes('timeout')){
+          const lbl = document.getElementById('sugg-detail-loading-label');
+          if(lbl) lbl.textContent = `Busy — retrying (${attempt}/3)...`;
+          await new Promise(r => setTimeout(r, 2000 * attempt));
+        } else { throw callErr; }
+      }
+    }
+    console.log('[Suggestions stage2] raw response:', raw.substring(0, 800));
     const result = robustParseJSON(raw);
     if(!result || (!result.name && !result.steps)) throw new Error('Recipe came back empty — please try again.');
     // Fill in name from suggestion if Gemini omitted it
