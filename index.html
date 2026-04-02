@@ -8257,19 +8257,27 @@ function robustParseJSON(raw){
   if(!s) s = raw.trim();
   // 2. Fix fancy/curly quotes
   s = s.replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"');
-  // 3. Fix unescaped control characters inside strings
+  // 3. Fix unescaped control characters
   s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g,' ');
-  // 4. Try to extract a proper matched bracket structure
-  const extracted = extractJSON(s, '[', ']') || extractJSON(s, '{', '}') || s;
+  // 4. Extract outermost structure — prefer {} over [] when object comes first
+  const firstArr = s.indexOf('['), firstObj = s.indexOf('{');
+  let extracted;
+  if(firstObj !== -1 && (firstArr === -1 || firstObj < firstArr)){
+    extracted = extractJSON(s,'{','}') || s;
+  } else {
+    extracted = extractJSON(s,'[',']') || extractJSON(s,'{','}') || s;
+  }
   // 5. Fix trailing commas
   const cleaned = extracted.replace(/,\s*([\]\}])/g,'$1');
-  // 6. Try direct parse
+  // 6. Direct parse
   try { return JSON.parse(cleaned); } catch(e1){}
-  // 7. Truncate array to last complete element
+  // 7. Truncation recovery — try closing the structure in multiple ways
   const lastClose = cleaned.lastIndexOf('},');
   if(lastClose > 0){
-    const trimmed = cleaned.substring(0, lastClose+1) + (cleaned.trimStart()[0]==='['?']':'}');
-    try { return JSON.parse(trimmed); } catch(e2){}
+    const base = cleaned.substring(0, lastClose + 1);
+    for(const ending of [']}', '}', ']', '}}', ']}}']){
+      try { return JSON.parse(base + ending); } catch(e){}
+    }
   }
   throw new Error('Could not parse AI response — please try again.');
 }
@@ -8440,7 +8448,7 @@ async function selectSuggestion(idx){
         } else { throw callErr; }
       }
     }
-    console.log('[Suggestions stage2] raw response:', raw.substring(0, 800));
+    console.log('[Suggestions stage2] raw length:', raw.length, '| first 1200:', raw.substring(0, 1200));
     const result = robustParseJSON(raw);
     if(!result || (!result.name && !result.steps)) throw new Error('Recipe came back empty — please try again.');
     // Fill in name from suggestion if Gemini omitted it
