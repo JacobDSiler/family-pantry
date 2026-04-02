@@ -8327,7 +8327,28 @@ async function runSuggestionStage1(){
   const existingNames = STATE.recipes.map(r => r.name);
   const dietConstraints = getDietPromptConstraints();
 
-  const prompt = 'Suggest 6 recipes for this pantry. Return ONLY a JSON array, no other text, no markdown.\n\nPantry:\n' + pantryText + '\n' + (existingNames.length ? 'Skip these existing recipes: ' + existingNames.join(', ') + '\n' : '') + dietConstraints + '\nJSON format (each item):\n{"emoji":"🍝","name":"Pasta Name","description":"Short tagline under 60 chars","cookTime":"20 min","haveIngredients":["pasta","garlic"],"missingIngredients":["parsley"]}\n\nRules: haveIngredients=items from pantry used; missingIngredients=max 3 items not in pantry; descriptions must NOT contain quotes or apostrophes; vary the styles.';
+  const prompt = [
+    'You are a home cooking assistant. Suggest 6 recipes based on this pantry.',
+    'Return ONLY a JSON array of 6 objects. No markdown. No text before or after the array.',
+    '',
+    'PANTRY:',
+    pantryText,
+    existingNames.length ? ('ALREADY SAVED (do not repeat): ' + existingNames.join(', ')) : '',
+    dietConstraints,
+    'RESPONSE FORMAT - return exactly this structure as a JSON array:',
+    '[',
+    '  {"emoji":"🍝","name":"Recipe name","description":"Tagline under 60 chars","cookTime":"20 min","haveIngredients":["pasta","garlic"],"missingIngredients":["parsley"]},',
+    '  {"emoji":"🥗","name":"Another recipe","description":"Another tagline","cookTime":"10 min","haveIngredients":["lettuce"],"missingIngredients":[]}',
+    ']',
+    '',
+    'Rules:',
+    '- Return an array of EXACTLY 6 recipe objects',
+    '- haveIngredients: ingredients from the pantry above that this recipe uses',
+    '- missingIngredients: max 3 ingredients NOT in pantry',
+    '- description: under 60 chars, no quote or apostrophe characters',
+    '- Vary styles: include quick meals, comfort food, something light',
+    '- Return ONLY the JSON array, nothing else',
+  ].filter(Boolean).join('\n');
 
   try {
     // Retry up to 3 times on transient errors
@@ -8335,6 +8356,7 @@ async function runSuggestionStage1(){
     for(let attempt = 1; attempt <= 3; attempt++){
       try {
         raw = await callGemini(prompt, [], { temperature: 0.7, maxOutputTokens: 4096 });
+        console.log('[Suggestions stage1] raw length:', raw.length, '| first 800:', raw.substring(0, 800));
         break;
       } catch(callErr){
         if(attempt === 3) throw callErr;
@@ -8346,7 +8368,9 @@ async function runSuggestionStage1(){
         } else { throw callErr; }
       }
     }
-    const parsed = robustParseJSON(raw);
+    let parsed = robustParseJSON(raw);
+    // If Gemini returned a single object instead of array, wrap it
+    if(parsed && !Array.isArray(parsed) && parsed.name) parsed = [parsed];
     if(!Array.isArray(parsed) || !parsed.length) throw new Error('No suggestions returned — please try again.');
     _suggList = parsed;
     renderSuggList();
